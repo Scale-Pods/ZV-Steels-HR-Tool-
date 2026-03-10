@@ -88,7 +88,9 @@ type AnalyticsResponse = {
   error?: string
 }
 
-const WEBHOOK_URL = "https://n8n.srv1010832.hstgr.cloud/webhook/HRAnalytics"
+const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+const WEBHOOK_PATH = process.env.NEXT_PUBLIC_WEBHOOK_HR_ANALYTICS || "HRAnalytics";
+const WEBHOOK_URL = `${WEBHOOK_BASE}/${WEBHOOK_PATH}`;
 
 /**
  * Utility: safeNumber

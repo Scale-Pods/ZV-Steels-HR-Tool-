@@ -32,7 +32,9 @@ export async function POST(request: Request) {
     let response: Response
     try {
       // Updated to newest webhook endpoint
-      response = await fetch("https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4cae-a24c-6c53e5f09497", {
+      const webhookBase = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+      const webhookPath = process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497";
+      response = await fetch(`${webhookBase}/${webhookPath}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -8,7 +8,9 @@ export async function GET(request: NextRequest, { params }: { params: { name: st
     console.log("[v0] Fetching campaign:", campaignName, "for user:", userEmail)
 
     // Fetch specific campaign from webhook
-    const webhookUrl = `https://n8n.srv1010832.hstgr.cloud/webhook/HRcampaigns?UserEmail=${encodeURIComponent(userEmail)}&CampaignName=${encodeURIComponent(campaignName)}`
+    const webhookBase = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+    const webhookPath = process.env.NEXT_PUBLIC_WEBHOOK_HR_CAMPAIGNS || "HRcampaigns";
+    const webhookUrl = `${webhookBase}/${webhookPath}?UserEmail=${encodeURIComponent(userEmail)}&CampaignName=${encodeURIComponent(campaignName)}`
 
     const response = await fetch(webhookUrl, {
       method: "GET",

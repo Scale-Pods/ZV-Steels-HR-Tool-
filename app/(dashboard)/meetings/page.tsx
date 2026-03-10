@@ -139,7 +139,7 @@ export default function MeetingsPage() {
         candidateDetails: baseCandidate
       }
 
-      const webhookBase = "https://n8n.srv1010832.hstgr.cloud/webhook/fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"
+      const webhookBase = `${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"}`
       let queryType = "other"
       if (type.includes("hr")) queryType = "hr"
       else if (type.includes("tech")) queryType = "tech"

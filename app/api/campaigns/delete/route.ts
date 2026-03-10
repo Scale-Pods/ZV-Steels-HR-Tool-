@@ -11,7 +11,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields: userEmail or campaignName" }, { status: 400 })
     }
 
-    const webhookUrl = "https://n8n.srv1010832.hstgr.cloud/webhook/HRcampaigns"
+    const webhookBase = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+    const webhookPath = process.env.NEXT_PUBLIC_WEBHOOK_HR_CAMPAIGNS || "HRcampaigns";
+    const webhookUrl = `${webhookBase}/${webhookPath}`;
 
     const response = await fetch(webhookUrl, {
       method: "PUT",

@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+
 // Map of action names to their corresponding n8n webhook URLs
 const WEBHOOK_MAP: Record<string, string> = {
   // Campaign listing / fetching
-  "Campaigns":         "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18",
-  "Certain Campaign":  "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18",
-  "AllCampaign":       "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18",
+  "Campaigns":         `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGNS || "ab8d28de-afb7-416f-aaf1-454949b27c18"}`,
+  "Certain Campaign":  `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGNS || "ab8d28de-afb7-416f-aaf1-454949b27c18"}`,
+  "AllCampaign":       `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGNS || "ab8d28de-afb7-416f-aaf1-454949b27c18"}`,
 
   // Campaign management
-  "CampaignCreation":  "https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4cae-a24c-6c53e5f09497",
-  "CampaignDetails":   "https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4cae-a24c-6c53e5f09497",
-  "EditCampaign":      "https://n8n.srv1010832.hstgr.cloud/webhook/HRcampaigns",
+  "CampaignCreation":  `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`,
+  "CampaignDetails":   `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`,
+  "EditCampaign":      `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_HR_CAMPAIGNS || "HRcampaigns"}`,
 
   // Analytics
-  "HRAnalytics":       "https://n8n.srv1010832.hstgr.cloud/webhook/HRAnalytics",
+  "HRAnalytics":       `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_HR_ANALYTICS || "HRAnalytics"}`,
 
   // Misc
-  "Report":            "https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4cae-a24c-6c53e5f09497",
-  "UpdateDecision":    "https://n8n.srv1010832.hstgr.cloud/webhook/4e32ea2c-cec1-4357-bd2c-e635fa910444",
-  "CallRoundData":     "https://n8n.srv1010832.hstgr.cloud/webhook/4e32ea2c-cec1-4357-bd2c-e635fa910444",
+  "Report":            `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`,
+  "UpdateDecision":    `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_UPDATE_DECISION || "4e32ea2c-cec1-4357-bd2c-e635fa910444"}`,
+  "CallRoundData":     `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_UPDATE_DECISION || "4e32ea2c-cec1-4357-bd2c-e635fa910444"}`,
 }
 
 // These actions are read-only fetches — forward them as GET to n8n

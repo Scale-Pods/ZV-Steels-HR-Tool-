@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 
-const WEBHOOK_URL = "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18"
+const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook";
+const WEBHOOK_URL = `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGNS || "ab8d28de-afb7-416f-aaf1-454949b27c18"}`;
+const WEBHOOK_CREATION = `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`;
+const WEBHOOK_HR_CAMPAIGNS = `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_HR_CAMPAIGNS || "HRcampaigns"}`;
 
 export async function GET(request: Request) {
   try {
@@ -125,7 +128,7 @@ export async function POST(request: Request) {
       ...body,
     }
 
-    const response = await fetch("https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4cae-a24c-6c53e5f09497", {
+    const response = await fetch(WEBHOOK_CREATION, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -156,7 +159,7 @@ export async function PUT(request: Request) {
       ...body,
     }
 
-    const response = await fetch("https://n8n.srv1010832.hstgr.cloud/webhook/HRcampaigns", {
+    const response = await fetch(WEBHOOK_HR_CAMPAIGNS, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

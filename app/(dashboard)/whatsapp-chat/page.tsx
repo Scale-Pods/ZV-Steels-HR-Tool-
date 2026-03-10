@@ -25,7 +25,7 @@ export default function WhatsAppChatPage() {
       setIsLoading(true)
       console.log("[v0] Fetching user list...")
 
-      const response = await fetch("https://n8n.srv1010832.hstgr.cloud/webhook/get-chat-data", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_CHAT_DATA || "get-chat-data"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
