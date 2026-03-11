@@ -298,8 +298,8 @@ export default function DashboardPage() {
       }
 
         // Map raw rows to Candidate objects
-        const normalizedCandidates: Candidate[] = rawCandidates.map((c: any) => ({
-          id: String(c.id || c["Candidate ID"] || c.id_candidate || `cand-${c.row_number || Math.random()}`),
+        const normalizedCandidates: Candidate[] = rawCandidates.map((c: any, index: number) => ({
+          id: String(c.id || c["Candidate ID"] || c.id_candidate || `cand-${c.row_number || index}`),
           name: String(c.name || c.Name || "Unknown Candidate"),
           email: String(c.email || c.Email || ""),
           phone: String(c.phone || c["Phone Number"] || ""),
@@ -822,18 +822,18 @@ export default function DashboardPage() {
                 <p className="text-xs text-emerald-400 font-medium">{overallConversion}</p>
               </div>
               {expandedCard === "total" && (
-                <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-2">
+                <div className="mt-4 pt-4 border-t border-border space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">HR Passed:</span>
-                    <span className="text-white font-semibold">{hrData?.overview?.hr_passed || 0}</span>
+                    <span className="text-muted-foreground">HR Passed:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.hr_passed || 0}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Tech Passed:</span>
-                    <span className="text-white font-semibold">{hrData?.overview?.tech_passed || 0}</span>
+                    <span className="text-muted-foreground">Tech Passed:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.tech_passed || 0}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Pending:</span>
-                    <span className="text-amber-400 font-semibold">{pendingRate}%</span>
+                    <span className="text-muted-foreground">Pending:</span>
+                    <span className="text-amber-500 font-semibold">{pendingRate}%</span>
                   </div>
                 </div>
               )}
@@ -907,30 +907,30 @@ export default function DashboardPage() {
           </Card>
 
           <Card
-            className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-800/50 hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/20 cursor-pointer"
+            className="bg-card border-border hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 cursor-pointer"
             onClick={() => setExpandedCard(expandedCard === "quality" ? null : "quality")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Decision Quality</CardTitle>
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Decision Quality</CardTitle>
               <div className="p-2 rounded-lg bg-amber-500/10">
                 <Award className="size-4 text-amber-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-amber-300">{decisionEffectiveness}</div>
+              <div className="text-3xl font-extrabold text-foreground">{decisionEffectiveness}</div>
               <div className="flex items-center gap-1 mt-2">
-                <TrendingUp className="size-4 text-amber-300" />
-                <p className="text-xs text-amber-300 font-medium">Effectiveness Index</p>
+                <TrendingUp className="size-4 text-amber-500" />
+                <p className="text-xs text-amber-500 font-medium">Effectiveness Index</p>
               </div>
               {expandedCard === "quality" && (
-                <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-2">
+                <div className="mt-4 pt-4 border-t border-border space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">All Candidates Avg:</span>
-                    <span className="text-white font-semibold">{hrData?.qualityIndex?.avgAllScore || "N/A"}</span>
+                    <span className="text-muted-foreground">All Candidates Avg:</span>
+                    <span className="text-foreground font-semibold">{hrData?.qualityIndex?.avgAllScore || "N/A"}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Hired Avg:</span>
-                    <span className="text-emerald-400 font-semibold">
+                    <span className="text-muted-foreground">Hired Avg:</span>
+                    <span className="text-emerald-500 font-semibold">
                       {hrData?.qualityIndex?.avgHiredScore || "N/A"}
                     </span>
                   </div>
@@ -1200,15 +1200,15 @@ export default function DashboardPage() {
                               {/* Contact Information Grid - Responsive layout */}
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                                 {candidate.phone && (
-                                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                                    <span className="text-slate-500">📞</span>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground">📞</span>
                                     <span className="font-medium hidden md:inline">Phone:</span>
                                     <span>{candidate.phone}</span>
                                   </div>
                                 )}
                                 {candidate.email && (
-                                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                                    <span className="text-slate-500">✉️</span>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground">✉️</span>
                                     <span className="font-medium hidden md:inline">Email:</span>
                                     <span className="truncate">{candidate.email}</span>
                                   </div>
@@ -1237,8 +1237,8 @@ export default function DashboardPage() {
 
                               {/* HR Assignment - Visible on tablet and larger */}
                               {candidate.hr && (
-                                <div className="hidden md:flex items-center gap-2 text-sm text-slate-400">
-                                  <Users className="size-4 text-slate-500" />
+                                <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Users className="size-4 text-muted-foreground/50" />
                                   <span className="font-medium">HR:</span>
                                   <span>{candidate.hr}</span>
                                 </div>

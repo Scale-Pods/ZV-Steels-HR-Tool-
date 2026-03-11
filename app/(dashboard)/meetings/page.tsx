@@ -70,7 +70,11 @@ export default function MeetingsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all")
   const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+
+  useEffect(() => {
+    setSelectedDate(new Date())
+  }, [])
   const [meetingFilter, setMeetingFilter] = useState<string>("all")
   const [isRescheduling, setIsRescheduling] = useState<string | null>(null)
   const [rescheduleData, setRescheduleData] = useState<{
@@ -178,7 +182,7 @@ export default function MeetingsPage() {
   }
 
   const normalizeCandidate = (c: any): Candidate => ({
-    id: String(c.id || c["Candidate ID"] || c.id_candidate || `cand-${c.row_number || Math.random()}`),
+    id: String(c.id || c["Candidate ID"] || c.id_candidate || `cand-${c.row_number || 0}`),
     name: String(c.name || c.Name || c.CandidateName || "Unknown"),
     email: String(c.email || c.Email || c.CandidateEmail || ""),
     phone: String(c.phone || c["Phone Number"] || c.PhoneNumber || ""),

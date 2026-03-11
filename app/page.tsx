@@ -23,9 +23,13 @@ import {
 import DotGrid from "@/components/ui/dot-grid"
 import SpotlightCard from "@/components/ui/spotlight-card"
 import { useEffect, useState } from "react"
+import { useAuth } from "@/context/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
+  const { user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,6 +38,15 @@ export default function LandingPage() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (user) {
+      router.push("/dashboard")
+    } else {
+      router.push("/sign-in")
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
@@ -45,9 +58,10 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex items-center gap-4">
-              <div className="relative h-10 w-28">
+          <Link href="/" className="flex items-center gap-6 hover:opacity-90 transition-all duration-300">
+            <div className="flex items-center gap-5">
+              {/* ZV Steels Logo Container */}
+              <div className="relative h-11 w-36 overflow-hidden">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -56,17 +70,21 @@ export default function LandingPage() {
                   priority
                 />
               </div>
-              <div className="h-6 w-px bg-border/40" />
-              <div className="flex flex-col items-start gap-1 opacity-100">
-                <span className="text-[7px] font-bold uppercase tracking-widest text-muted-foreground/50 whitespace-nowrap leading-none">
+
+              {/* Minimalist Vertical Separator */}
+              <div className="h-8 w-[1.5px] bg-linear-to-b from-transparent via-border/60 to-transparent" />
+
+              {/* ScalePods Branding */}
+              <div className="flex flex-col items-center justify-center pt-1.5">
+                <span className="text-[8px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 leading-none mb-1.5 text-center">
                   Powered By
                 </span>
-                <div className="relative h-12 w-44">
+                <div className="relative h-10 w-40">
                   <Image
                     src="/images/scalepods-logo.avif"
                     alt="Scalepods Logo"
                     fill
-                    className="object-contain scale-[2.5] invert dark:invert-0 transition-all duration-300"
+                    className="object-contain invert dark:invert-0 scale-[1.4] transition-all duration-300 transform hover:scale-[1.5]"
                   />
                 </div>
               </div>
@@ -85,30 +103,25 @@ export default function LandingPage() {
             >
               Benefits
             </Link>
-            <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              Pricing
-            </Link>
-            <Link
-              href="/dashboard"
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+            <button
+              onClick={handleDashboardClick}
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium cursor-pointer"
             >
               Dashboard
-            </Link>
+            </button>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/sign-in">
-              <Button variant="ghost" size="sm" className="font-medium">
+              <Button variant="ghost" size="sm" className="font-semibold">
                 Sign In
               </Button>
             </Link>
-            <Link href="/sign-up">
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white shadow-lg shadow-purple-500/20 font-medium"
-              >
-                Get Started
-              </Button>
-            </Link>
+            <button
+              onClick={handleDashboardClick}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
+            >
+              Dashboard
+            </button>
           </div>
         </div>
       </header>
@@ -132,8 +145,8 @@ export default function LandingPage() {
 
         <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:py-40">
           <div className="mx-auto max-w-4xl text-center">
-            <Badge className="mb-6 bg-purple-500/20 text-purple-300 border-purple-500/40 text-sm px-5 py-2 shadow-lg shadow-purple-500/20 backdrop-blur-sm">
-              <Sparkles className="h-4 w-4 mr-2 inline animate-pulse" />
+            <Badge className="mb-6 bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/40 text-sm px-5 py-2 shadow-lg shadow-purple-500/5 dark:shadow-purple-500/20 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 mr-2 inline animate-pulse text-purple-500 dark:text-purple-400" />
               AI-Powered HR Pipeline Platform
             </Badge>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-foreground leading-tight drop-shadow-sm">
@@ -144,27 +157,16 @@ export default function LandingPage() {
               comprehensive HR management platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/sign-up">
-                <Button
-                  size="default"
-                  className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white px-8 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold"
-                >
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button
-                  size="default"
-                  variant="outline"
-                  className="px-8 py-6 h-auto bg-background/80 backdrop-blur-sm border-border hover:bg-background font-semibold"
-                >
-                  View Demo
-                </Button>
-              </Link>
+              <button
+                onClick={handleDashboardClick}
+                className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white px-10 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold rounded-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              >
+                Access Platform
+                <ArrowRight className="h-5 w-5" />
+              </button>
             </div>
-            <p className="mt-8 text-sm text-muted-foreground">
-              No credit card required • 14-day free trial • Cancel anytime
+            <p className="mt-8 text-sm text-muted-foreground font-medium uppercase tracking-[0.2em] opacity-60">
+              Enterprise Grade Recruitment Infrastructure
             </p>
           </div>
         </div>
@@ -177,7 +179,7 @@ export default function LandingPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/10 flex items-center justify-center">
-                  <Users className="h-7 w-7 text-purple-400" />
+                  <Users className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
                   <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -193,7 +195,7 @@ export default function LandingPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/10 flex items-center justify-center">
-                  <TrendingUp className="h-7 w-7 text-purple-400" />
+                  <TrendingUp className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
                   <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -209,7 +211,7 @@ export default function LandingPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/10 flex items-center justify-center">
-                  <Building2 className="h-7 w-7 text-purple-400" />
+                  <Building2 className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
                   <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -321,7 +323,7 @@ export default function LandingPage() {
               <ul className="space-y-5">
                 <li className="flex items-start gap-4">
                   <div className="h-7 w-7 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg mb-1">Reduce Time-to-Hire by 85%</h4>
@@ -333,7 +335,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-4">
                   <div className="h-7 w-7 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg mb-1">Centralized Candidate Database</h4>
@@ -345,7 +347,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-4">
                   <div className="h-7 w-7 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg mb-1">Data-Driven Insights</h4>
@@ -357,7 +359,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-4">
                   <div className="h-7 w-7 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                    <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg mb-1">Enterprise-Grade Security</h4>
@@ -421,27 +423,16 @@ export default function LandingPage() {
             Join hundreds of companies using HRDashboard to build better teams faster with intelligent automation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/sign-up">
-              <Button
-                size="default"
-                className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white text-lg px-8 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold"
-              >
-                Start Your Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button
-                size="default"
-                variant="outline"
-                className="text-lg px-8 py-6 h-auto bg-background/50 backdrop-blur-sm border-border/50 hover:bg-background/80 font-semibold"
-              >
-                Schedule a Demo
-              </Button>
-            </Link>
+            <button
+              onClick={handleDashboardClick}
+              className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white text-lg px-12 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+            >
+              Access Platform
+              <ArrowRight className="h-5 w-5" />
+            </button>
           </div>
-          <p className="mt-8 text-sm text-muted-foreground">
-            14-day free trial • No credit card required • Cancel anytime
+          <p className="mt-8 text-sm text-muted-foreground font-semibold">
+            Secure • Scaling • Professional
           </p>
         </div>
       </section>
@@ -450,8 +441,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid gap-8 md:grid-cols-4">
             <div className="space-y-4">
-              <Link href="/" className="flex flex-col items-start gap-3 hover:opacity-80 transition-opacity">
-                <div className="relative h-12 w-32">
+              <Link href="/" className="flex flex-col items-start gap-4 hover:opacity-90 transition-all duration-300">
+                <div className="relative h-14 w-44">
                   <Image
                     src="https://zvsteels.com/assets/img/zv_logo.png"
                     alt="ZV Steels Logo"
@@ -459,16 +450,17 @@ export default function LandingPage() {
                     className="object-contain"
                   />
                 </div>
-                <div className="flex flex-col items-start gap-1">
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 whitespace-nowrap">
+                
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 leading-none text-center">
                     Powered By
                   </span>
-                  <div className="relative h-14 w-52">
+                  <div className="relative h-12 w-44">
                     <Image
                       src="/images/scalepods-logo.avif"
                       alt="Scalepods Logo"
                       fill
-                      className="object-contain scale-[2.5] invert dark:invert-0 transition-all duration-300"
+                      className="object-contain invert dark:invert-0 scale-[1.4] grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500"
                     />
                   </div>
                 </div>
@@ -486,14 +478,9 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#pricing" className="hover:text-foreground transition-colors">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard" className="hover:text-foreground transition-colors">
+                  <button onClick={handleDashboardClick} className="hover:text-foreground transition-colors text-left">
                     Dashboard
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </div>
@@ -539,7 +526,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-border/40 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} HRDashboard. All rights reserved.</p>
+            <p>© 2026 HRDashboard. All rights reserved.</p>
             <div className="flex gap-6">
               <Link href="#" className="hover:text-foreground transition-colors">
                 Terms

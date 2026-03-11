@@ -4,6 +4,8 @@ import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/context/auth-context"
+import NextTopLoader from "nextjs-toploader"
 import "./globals.css"
 
 // Initialize fonts
@@ -37,9 +39,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`antialiased ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="font-sans">
+        <NextTopLoader color="#3b82f6" height={3} showSpinner={false} />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
-          <Analytics />
+          <AuthProvider>
+            <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+            <Analytics />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

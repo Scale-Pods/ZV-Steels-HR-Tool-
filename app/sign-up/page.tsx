@@ -2,22 +2,13 @@
 
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Users, TrendingUp, Shield } from "lucide-react"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Sparkles, Users } from "lucide-react"
+import { SignUpForm } from "@/components/auth/sign-up-form"
+import { GoogleOAuthButton } from "@/components/auth/oauth-buttons"
 
 export const dynamic = "force-dynamic"
 
 export default function SignUpPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // Simulated auto-login for guest
-    const timer = setTimeout(() => {
-      router.push("/dashboard")
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [router])
 
   return (
     <div className="min-h-svh grid lg:grid-cols-2">
@@ -62,19 +53,44 @@ export default function SignUpPage() {
         </div>
 
         <div className="relative z-10">
-          <p className="text-sm text-white/60">© {new Date().getFullYear()} HR Pipeline. All rights reserved.</p>
+          <p className="text-sm text-white/60">© 2026 HR Pipeline. All rights reserved.</p>
         </div>
       </div>
 
       {/* Right side - Mock Sign Up */}
       <div className="flex items-center justify-center p-6 lg:p-12 bg-background">
-        <div className="w-full max-w-md text-center">
-          <h2 className="text-2xl font-bold mb-4">Creating your account...</h2>
-          <p className="text-muted-foreground">Redirecting you to the dashboard.</p>
-          <div className="mt-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="space-y-4">
+            <h1 className="text-2xl font-bold tracking-tight">Create an account</h1>
+            <p className="text-sm text-muted-foreground">
+              Enter your details to get started with HR Pipeline
+            </p>
           </div>
-        </div>
+
+          <div className="mt-8 space-y-6 text-left">
+            <SignUpForm />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <GoogleOAuthButton />
+          </div>
+
+          <div className="mt-8 text-center text-sm">
+            <p className="text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/sign-in" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          </div>
       </div>
     </div>
   )

@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 
 interface Position {
   x: number
@@ -56,7 +57,10 @@ const SpotlightCard: React.FC<SpotlightCardProps> = ({
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`relative rounded-3xl border border-neutral-800 bg-neutral-900 overflow-hidden p-8 ${className}`}
+      className={cn(
+        "relative rounded-3xl border border-border bg-card overflow-hidden p-8",
+        className
+      )}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 ease-in-out"

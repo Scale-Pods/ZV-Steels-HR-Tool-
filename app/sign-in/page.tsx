@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { SignInForm } from "@/components/auth/sign-in-form"
+import { GoogleOAuthButton } from "@/components/auth/oauth-buttons"
 
 export const dynamic = "force-dynamic"
 
@@ -6,9 +8,9 @@ export default function SignInPage() {
   return (
     <div className="min-h-svh grid lg:grid-cols-2">
       {/* Left side - Testimonial/Hero */}
-      <div className="hidden lg:flex relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-12 items-center justify-center overflow-hidden">
+      <div className="hidden lg:flex relative bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-12 items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('/office-team-collaboration.png')] bg-cover bg-center opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-slate-900 via-slate-900/80 to-transparent" />
 
         <div className="relative z-10 max-w-lg space-y-8">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -53,19 +55,27 @@ export default function SignInPage() {
           </Link>
 
           <div className="space-y-4">
-            <h1 className="text-2xl font-bold">Sign In</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
             <p className="text-sm text-muted-foreground">
-              Connect to view your HR dashboard and manage campaigns
+              Enter your credentials to access your HR dashboard
             </p>
           </div>
 
-          <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-            <p className="text-sm text-amber-900 dark:text-amber-200">
-              <strong>Note:</strong> Authentication is currently disabled. You can access the dashboard directly.
-            </p>
-            <Link href="/dashboard" className="inline-block mt-3 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90">
-              Go to Dashboard
-            </Link>
+          <div className="mt-8 space-y-6">
+            <SignInForm />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <GoogleOAuthButton />
           </div>
 
           <div className="mt-8 text-center text-sm">

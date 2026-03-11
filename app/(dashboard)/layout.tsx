@@ -21,13 +21,13 @@ import {
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
 import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as CalendarIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import { useState, useEffect, ReactNode } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "sonner"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
 import { ReportIssueModal } from "@/components/campaigns/report-issue-modal"
+import { PageTransition } from "@/components/animations/page-transition"
 
 function NavItems() {
   const pathname = usePathname()
@@ -43,12 +43,6 @@ function NavItems() {
       label: "Campaigns",
       icon: <Workflow className="size-6" />,
       description: "Create & Manage",
-    },
-    {
-      href: "/whatsapp-chat",
-      label: "Messages",
-      icon: <MessageCircle className="size-6" />,
-      description: "View Conversations",
     },
     {
       href: "/meetings",
@@ -74,23 +68,23 @@ function NavItems() {
                     : "hover:bg-muted/20 text-muted-foreground hover:text-foreground",
                 )}
               >
-                <span className="flex items-center gap-5 w-full">
+                <span className="flex items-center gap-4 w-full">
                   <span
                     className={cn(
-                      "transition-colors",
-                      pathname === item.href ? "text-violet-500" : "text-muted-foreground",
+                      "transition-colors shrink-0",
+                      pathname === item.href ? "text-primary" : "text-muted-foreground",
                     )}
                   >
                     {item.icon}
                   </span>
-                  <span className="flex-1">
-                    <div className="font-bold text-[17px] leading-tight active:scale-95 transition-transform">
+                  <div className="flex-1 overflow-hidden">
+                    <div className="font-semibold text-[15px] leading-tight truncate">
                       {item.label}
                     </div>
-                    <div className="text-[13px] text-muted-foreground font-medium group-data-[state=collapsed]:hidden opacity-70 mt-0.5">
+                    <div className="text-[11px] text-muted-foreground font-medium group-data-[state=collapsed]:hidden opacity-60 mt-0.5 truncate uppercase tracking-wider">
                       {item.description}
                     </div>
-                  </span>
+                  </div>
                 </span>
               </SidebarMenuButton>
             </Link>
@@ -102,7 +96,14 @@ function NavItems() {
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <SidebarProvider
       style={
@@ -112,11 +113,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         } as React.CSSProperties
       }
     >
-      <Toaster position="top-right" closeButton richColors />
+      {mounted && <Toaster position="top-right" closeButton richColors />}
       <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
-        <SidebarHeader className="pt-10 pb-4 px-6">
-          <Link href="/" className="flex flex-col items-center gap-4 hover:opacity-80 transition-opacity group-data-[state=collapsed]:items-center">
-            <div className="relative h-20 w-full shrink-0 group-data-[state=collapsed]:h-12 group-data-[state=collapsed]:w-12">
+        <SidebarHeader className="py-8 px-6">
+          <Link href="/" className="flex flex-col items-center gap-6 hover:opacity-90 transition-opacity">
+            <div className="relative h-16 w-32 shrink-0 group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10">
               <Image
                 src="https://zvsteels.com/assets/img/zv_logo.png"
                 alt="ZV Steels Logo"
@@ -125,28 +126,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 priority
               />
             </div>
-            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center">
-              <span className="text-[7px] font-black uppercase tracking-[0.4em] text-muted-foreground/30 leading-none mb-2">
-                Powered By
+            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-1 opacity-40">
+              <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                Management System
               </span>
-              <div className="relative h-10 w-44">
-                <Image
-                  src="/images/scalepods-logo.avif"
-                  alt="Scalepods Logo"
-                  fill
-                  className="object-contain scale-[2.2] invert dark:invert-0 transition-all duration-300"
-                />
-              </div>
             </div>
           </Link>
         </SidebarHeader>
 
         <SidebarSeparator className="bg-border/10" />
 
-        <SidebarContent className="py-10">
+        <SidebarContent className="py-2">
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground/40 w-full justify-center mb-10 font-black">
-              Main Menu
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/30 px-6 py-4 font-bold">
+              Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <NavItems />
@@ -154,28 +147,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-border/10 p-4 space-y-2">
+        <SidebarFooter className="border-t border-border/10 p-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsReportModalOpen(true)}
-                className="w-full h-11 px-4 hover:bg-muted/20 text-muted-foreground hover:text-foreground"
+                className="w-full h-11 px-4 hover:bg-destructive/10 text-muted-foreground hover:text-destructive group transition-colors"
+                tooltip="Report an Issue"
               >
-                <div className="flex items-center gap-4 w-full">
-                  <AlertCircle className="size-5 text-red-500" />
-                  <span className="font-bold text-[15px]">Report an Issue</span>
+                <div className="flex items-center gap-4">
+                  <AlertCircle className="size-5 text-red-500/80 group-hover:text-red-500 transition-colors" />
+                  <span className="font-bold text-[14px]">Report an Issue</span>
                 </div>
               </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <div className="flex items-center justify-between w-full h-11 px-4 rounded-lg hover:bg-muted/10 transition-colors">
-                <div className="flex items-center gap-4">
-                  <ThemeToggle />
-                  <span className="text-sm font-semibold text-muted-foreground group-data-[state=collapsed]:hidden tracking-tight">
-                    Toggle Theme
-                  </span>
-                </div>
-              </div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -183,15 +167,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-svh bg-background">
+      <SidebarInset className="min-h-svh bg-background flex flex-col">
         <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-          <div className="flex h-16 items-center gap-4 px-6">
+          <div className="flex h-16 items-center gap-4 px-8">
             <SidebarTrigger className="hover:bg-accent shrink-0 p-2 size-10" />
             <PageHeader />
           </div>
         </header>
 
-        <main className="p-10">{children}</main>
+        <main className="flex-1 p-8 overflow-auto">
+          <PageTransition key={pathname}>
+            {children}
+          </PageTransition>
+        </main>
         <ReportIssueModal open={isReportModalOpen} onOpenChange={setIsReportModalOpen} />
       </SidebarInset>
     </SidebarProvider>

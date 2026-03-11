@@ -1,36 +1,48 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import Link from "next/link"
+import { UserNav } from "@/components/profile/user-nav"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 function titleForPath(path: string) {
+  if (path.startsWith("/exhibitions/campaign/")) return "Campaign Details"
+  
   switch (path) {
+    case "/dashboard":
     case "/":
       return "Dashboard"
     case "/setup-credentials":
       return "Setup Credentials"
     case "/manage-campaigns":
       return "Manage Campaigns"
+    case "/meetings":
+      return "Meetings"
     default:
-      return "ZV Steels"
+      return "HR Pipeline"
   }
 }
 
+import { useState, useEffect } from "react"
+
 export function PageHeader() {
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const title = titleForPath(pathname)
 
   return (
-    <div className="flex w-full items-center justify-between">
-      <h1 className="text-pretty text-lg font-semibold">{title}</h1>
-      <Button variant="outline" className="gap-2 bg-transparent" asChild>
-        <Link href="/profile" aria-label="Open profile">
-          <Image src="/placeholder-user.jpg" width={20} height={20} alt="" className="rounded-full" />
-          <span className="hidden sm:inline">Account</span>
-        </Link>
-      </Button>
+    <div className="flex w-full items-center justify-between px-4 h-16">
+      <h1 className="text-xl font-bold tracking-tight text-foreground">
+        {title}
+      </h1>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <UserNav />
+      </div>
     </div>
   )
 }
