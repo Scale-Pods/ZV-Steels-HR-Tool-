@@ -12,11 +12,12 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table"
-import { Calendar, MapPin, Users, Edit2, Loader2, AlertCircle, Eye } from "lucide-react"
+import { Calendar, MapPin, Users, Edit2, Trash2, Loader2, AlertCircle, Eye } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { EditCampaignModal } from "./edit-campaign-modal"
+import { DeleteCampaignDialog } from "./delete-campaign-dialog"
 import Link from "next/link"
 
 const FETCH_URL = "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18?action=Campaigns"
@@ -42,9 +43,10 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Edit Modal State
+  // Edit & Delete Modal State
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [deletingCampaign, setDeletingCampaign] = useState<string | null>(null)
 
   const fetchCampaigns = async () => {
     setLoading(true)
@@ -106,6 +108,33 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
   const handleEditClick = (campaign: Campaign) => {
     setEditingCampaign(campaign)
     setIsEditModalOpen(true)
+  }
+
+  const executeDelete = async (campaignName: string) => {
+
+    try {
+      const response = await fetch("/api/webhook-proxy?action=DeleteCampaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "DeleteCampaign",
+          campaignName: campaignName
+        })
+      })
+      
+      if (!response.ok) throw new Error("Failed to delete campaign")
+      
+      toast.success("Campaign deleted successfully", {
+        action: {
+          label: "OK",
+          onClick: () => fetchCampaigns(),
+        },
+        duration: Infinity, // Keep it visible until they click OK as requested
+      })
+    } catch (err: any) {
+      console.error("[CampaignsList] Delete error:", err)
+      toast.error(err.message || "Failed to delete campaign")
+    }
   }
 
   if (loading && campaigns.length === 0) {
@@ -208,18 +237,32 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
                   </Badge>
                   <CardTitle className="text-xl line-clamp-1 text-foreground">{campaign.CampaignName}</CardTitle>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full hover:bg-violet-500/10 hover:text-violet-500"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleEditClick(campaign)
-                  }}
-                >
-                  <Edit2 className="size-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="rounded-full hover:bg-violet-500/10 hover:text-violet-500 h-8 w-8"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleEditClick(campaign)
+                    }}
+                  >
+                    <Edit2 className="size-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="rounded-full hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDeletingCampaign(campaign.CampaignName)
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             
@@ -273,6 +316,15 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
           onSuccess={fetchCampaigns}
         />
       )}
+
+      <DeleteCampaignDialog
+        isOpen={!!deletingCampaign}
+        onClose={() => setDeletingCampaign(null)}
+        onConfirm={() => {
+          if (deletingCampaign) executeDelete(deletingCampaign)
+        }}
+        campaignName={deletingCampaign || ""}
+      />
     </div>
   )
 })

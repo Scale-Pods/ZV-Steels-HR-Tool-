@@ -29,6 +29,7 @@ import {
   X,
   MoreVertical,
   ExternalLink,
+  Trash2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -36,11 +37,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { CandidateDetailSidebar } from "@/components/candidates/candidate-detail-sidebar"
 import { HRUploadZone } from "@/components/upload/hr-upload-zone"
+import { DeleteCampaignDialog } from "@/components/campaigns/delete-campaign-dialog"
 
 interface Candidate {
   CandidateID: string
@@ -143,8 +145,6 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const isLoaded = true
   const user = GUEST_USER
 
-  const { toast } = useToast()
-
   const [isMounted, setIsMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<CampaignAnalytics | null>(null)
@@ -153,6 +153,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"score" | "city" | "hr">("score")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   
@@ -207,10 +208,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
 
       if (!userEmail) {
-        toast({
-          title: "Authentication Required",
+        toast.error("Authentication Required", {
           description: "Please sign in to view campaign details.",
-          variant: "destructive",
         })
         return
       }
@@ -353,10 +352,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         }
 
       } else if (rawData.Status === 404 || rawData.Error || rawData.Eror) {
-        toast({
-          title: "No Data Available",
+        toast.info("No Data Available", {
           description: rawData.Error || rawData.Eror || "No candidate data found for this campaign.",
-          variant: "default",
         })
         setLoading(false)
         return
@@ -366,10 +363,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
       if (candidateList.length === 0) {
         console.warn("[v0] No candidates extracted. Raw keys:", Object.keys(rawData))
-        toast({
-          title: "No Candidates Found",
+        toast.info("No Candidates Found", {
           description: "No candidate data found for this campaign yet.",
-          variant: "default",
         })
         setLoading(false)
         return
@@ -456,10 +451,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       console.log("[v0] Analytics set with", candidateList.length, "candidates")
     } catch (error: any) {
       console.error("[v0] Error fetching campaign data:", error)
-      toast({
-        title: "Error Loading Data",
+      toast.error("Error Loading Data", {
         description: "Failed to load campaign analytics. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setLoading(false)
@@ -495,10 +488,39 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
   const handleRefresh = () => {
     fetchCampaignData()
-    toast({
-      title: "Refreshing Data",
+    toast.success("Refreshing Data", {
       description: "Campaign data is being updated...",
     })
+  }
+
+  const handleDeleteCampaign = async () => {
+
+    try {
+      const response = await fetch("/api/webhook-proxy?action=DeleteCampaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "DeleteCampaign",
+          campaignName: campaignName
+        })
+      })
+      
+      if (!response.ok) throw new Error("Failed to delete campaign")
+      
+      toast.success("Campaign Deleted", {
+        description: `Successfully deleted campaign "${campaignName}"`,
+        action: {
+          label: "OK",
+          onClick: () => router.push("/dashboard"),
+        },
+        duration: Infinity,
+      })
+    } catch (err: any) {
+      console.error("[CampaignDetail] Delete error:", err)
+      toast.error("Deletion Failed", {
+        description: err.message || "Failed to delete campaign",
+      })
+    }
   }
 
   const handleCandidateClick = (candidate: Candidate) => {
@@ -582,9 +604,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     const previousDecision = (candidate as any)[roundKey]
     updateCandidateLocally(candidate.CandidateID, roundKey, decision)
 
-    toast({
-      title: "Decision Updated",
-      description: `${candidate.Name}'s ${roundMapping[roundKey] || roundKey} marked as ${decision}`,
+    toast.success("Decision Updated", {
+      description: `${candidate.Name}'s marked as ${decision}`,
     })
 
     // ── 2. Save to backend in background ───────────────────────────────────
@@ -627,10 +648,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     } catch (err: any) {
       // ── 3. Revert optimistic update on failure ───────────────────────────
       updateCandidateLocally(candidate.CandidateID, roundKey, previousDecision ?? "")
-      toast({
-        title: "Save Failed",
+      toast.error("Save Failed", {
         description: "Could not save to backend. The change has been reverted.",
-        variant: "destructive",
       })
     }
   }
@@ -768,14 +787,24 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                 </h1>
                 <p className="text-muted-foreground mt-1">Campaign Analytics & Candidate Management</p>
               </div>
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                className="gap-2 bg-muted/50 border-border hover:bg-muted"
-              >
-                <RefreshCw className="size-4" />
-                Refresh Data
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleRefresh}
+                  variant="outline"
+                  className="gap-2 bg-muted/50 border-border hover:bg-muted"
+                >
+                  <RefreshCw className="size-4" />
+                  Refresh Data
+                </Button>
+                <Button
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  variant="destructive"
+                  className="gap-2"
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
@@ -1206,6 +1235,12 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         }}
         campaignName={campaignName}
         onDecisionUpdate={fetchCampaignData}
+      />
+      <DeleteCampaignDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteCampaign}
+        campaignName={campaignName}
       />
     </div>
   )

@@ -126,10 +126,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 priority
               />
             </div>
-            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-1 opacity-40">
-              <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-1">
+              <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-3 opacity-60">
                 Management System
               </span>
+              <div className="flex flex-col items-center justify-center border-t border-border/10 pt-4 w-[80%]">
+                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 leading-none mb-0.5 text-center">
+                  Powered By
+                </span>
+                <div className="relative h-10 w-32">
+                  <Image
+                    src="/images/scalepods-logo.avif"
+                    alt="Scalepods Logo"
+                    fill
+                    className="object-contain invert dark:invert-0 scale-[1.3]"
+                  />
+                </div>
+              </div>
             </div>
           </Link>
         </SidebarHeader>

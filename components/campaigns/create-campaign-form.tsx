@@ -126,6 +126,46 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
 
     setIsSubmitting(true)
 
+    try {
+      // Check if campaign already exists
+      const checkResponse = await fetch("/api/webhook-proxy?action=Campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ UserEmail: userEmail })
+      })
+      
+      if (checkResponse.ok) {
+        const text = await checkResponse.text()
+        let data: any = []
+        if (text && text.trim() !== "") {
+          try { data = JSON.parse(text) } catch (e) { }
+        }
+        
+        let existingCampaigns: any[] = []
+        if (Array.isArray(data)) {
+          existingCampaigns = data
+        } else if (data.data && Array.isArray(data.data)) {
+          existingCampaigns = data.data.map((item: any) => item.json || item)
+        } else if (data.campaigns && Array.isArray(data.campaigns)) {
+          existingCampaigns = data.campaigns
+        }
+        
+        const exists = existingCampaigns.some((c: any) => 
+          String(c.CampaignName || "").toLowerCase() === campaignName.trim().toLowerCase()
+        )
+        
+        if (exists) {
+          toast.error(`A campaign named "${campaignName.trim()}" already exists.`, {
+            description: "Please choose a different name."
+          })
+          setIsSubmitting(false)
+          return
+        }
+      }
+    } catch (err) {
+      console.error("[Campaign] Failed to check existing campaigns:", err)
+    }
+
     const payload: Record<string, unknown> = {
       UserEmail: userEmail,
       CampaignName: campaignName.trim(),

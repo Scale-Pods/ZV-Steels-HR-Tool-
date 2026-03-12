@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Upload, File, X, CheckCircle2, AlertCircle, ExternalLink, Loader2, FolderOpen, RefreshCcw, Edit2, Settings2 } from "lucide-react"
+import { Upload, File, X, CheckCircle2, AlertCircle, ExternalLink, Loader2, FolderOpen, RefreshCcw, Edit2, Settings2, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -214,31 +214,16 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
         continue
       }
 
+      // Only support individual resume files inside the folder
       const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."))
-
-      // For this workflow, we primarily expect ZIP files
-      if (ext === ".zip") {
-        // Validate ZIP mime type
-        const validZipMimes = ["application/zip", "application/x-zip-compressed", "application/x-zip"]
-        if (file.type && !validZipMimes.includes(file.type)) {
-          console.warn("[v0] Warning: ZIP file mime type unexpected:", file.type)
-          toast({
-            title: "ZIP Validation Warning",
-            description: `${file.name} may not be a valid ZIP file. MIME type: ${file.type}. Proceeding anyway.`,
-            variant: "default",
-          })
-        }
-      } else {
-        // Also support individual resume files
-        const validExtensions = [".pdf", ".doc", ".docx", ".txt"]
-        if (!validExtensions.includes(ext)) {
-          toast({
-            title: "Invalid File Type",
-            description: `${file.name} is not supported. Please upload .zip files containing resumes, or individual resume files (.pdf, .doc, .docx, .txt).`,
-            variant: "destructive",
-          })
-          continue
-        }
+      const validExtensions = [".pdf", ".doc", ".docx", ".txt"]
+      if (!validExtensions.includes(ext)) {
+        toast({
+          title: "Invalid File Type",
+          description: `${file.name} is not supported. Please upload a folder containing resume files (.pdf, .doc, .docx, .txt).`,
+          variant: "destructive",
+        })
+        continue
       }
 
       if (file.size > maxSize) {
@@ -468,10 +453,10 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
 
         if (action === "Folder") {
           successTitle = "Resumes Uploaded"
-          successDesc = "Candidate resumes uploaded and processing started."
+          successDesc = "Candidates are now processing. You will receive an email once the AI scoring and skills extraction is complete."
         } else if (action === "JDFolder") {
           successTitle = "JD & Resumes Uploaded"
-          successDesc = "Both job description and resumes have been uploaded successfully."
+          successDesc = "Data uploaded. You will receive an email once the AI candidates scoring is complete."
         }
 
         toast({
@@ -507,21 +492,9 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
       let errorMessage = "An error occurred during upload"
       let errorTitle = "Upload Failed"
 
-      if (error.message.includes("No valid binary files")) {
-        errorTitle = "ZIP File Error"
-        errorMessage =
-          "The ZIP file appears to be empty or contains no valid files. Please check the ZIP contents and try again."
-      } else if (
-        error.message.includes("split is not a function") ||
-        error.message.includes("Server error processing")
-      ) {
+      if (error.message.includes("decompress") || error.message.includes("ZIP") || error.message.includes("split is not a function") || error.message.includes("Server error processing")) {
         errorTitle = "Processing Error"
-        errorMessage =
-          "The server could not process the ZIP file. Please ensure it's a valid ZIP archive created with standard compression tools."
-      } else if (error.message.includes("cannot decompress") || error.message.includes("decompress")) {
-        errorTitle = "Decompression Failed"
-        errorMessage =
-          "Unable to extract files from the ZIP. Please ensure the ZIP file is not password-protected or corrupted."
+        errorMessage = "The server could not process the folder. Please ensure it contains standard resume files."
       } else if (error.message.includes("Invalid file object")) {
         errorTitle = "Invalid File"
         errorMessage = error.message
@@ -833,29 +806,13 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
               </div>
               <div>
                 <p className="text-xl font-semibold text-foreground mb-2">
-                  {isDragging ? "Ready to drop" : "Drop files or folders here"}
+                  {isDragging ? "Ready to drop" : "Drop folder here"}
                 </p>
                 <p className="text-sm text-muted-foreground max-w-xs">
-                  Upload .zip archives or individual PDFs to start candidate analysis
+                  Upload a folder containing candidate resumes to start analysis
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-4 relative mt-2">
-                <input
-                  type="file"
-                  multiple
-                  accept=".zip,.pdf,.doc,.docx,.txt"
-                  onChange={handleFileSelect}
-                  className="absolute inset-x-0 inset-y-0 w-[140px] h-[44px] opacity-0 cursor-pointer mx-auto left-0 right-[170px] z-10"
-                  disabled={isUploading}
-                />
-                <Button
-                  variant="outline"
-                  className="bg-muted/50 border-border text-foreground hover:bg-muted pointer-events-none"
-                >
-                  <File className="size-4 mr-2" />
-                  Select Files
-                </Button>
-
                 <div className="relative">
                   <input
                     type="file"
@@ -868,7 +825,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     disabled={isUploading}
                   />
-                  <Button variant="outline" className="bg-muted/50 border-border text-foreground hover:bg-muted pointer-events-none">
+                  <Button variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20 pointer-events-none">
                     <FolderOpen className="size-4 mr-2" />
                     Select Folder
                   </Button>
@@ -992,6 +949,14 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground mb-1">Upload Completed</p>
                   <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{lastUpload.message}</p>
+                  {lastUpload.status === "success" && (
+                    <div className="flex items-start gap-2 mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+                      <Clock className="size-4 mt-0.5 shrink-0" />
+                      <p className="text-xs leading-relaxed">
+                        Resumes have been uploaded and are currently being processed. It will take some time to process skills and score the candidates. <strong>You will receive an email once everything is done.</strong>
+                      </p>
+                    </div>
+                  )}
                   {lastUpload.summary && (
                     <div className="flex items-center gap-3 text-[10px] text-slate-500 uppercase tracking-wider font-medium">
                       <span>{lastUpload.summary.totalFiles} Candidates</span>
