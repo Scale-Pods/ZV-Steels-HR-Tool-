@@ -14,6 +14,7 @@ import { Loader2, CalendarIcon, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/context/auth-context"
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,8 @@ interface CreateCampaignFormProps {
 
 export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
   // ── State ────────────────────────────────────────────────────────────────
-  const userEmail = "guest@example.com"
+  const { user } = useAuth()
+  const userEmail = user?.email || "guest@example.com"
 
   const [campaignName, setCampaignName] = useState("")
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)

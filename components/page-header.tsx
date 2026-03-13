@@ -17,6 +17,8 @@ function titleForPath(path: string) {
       return "Manage Campaigns"
     case "/meetings":
       return "Meetings"
+    case "/call-analysis":
+      return "Call Analysis"
     default:
       return "HR Pipeline"
   }

@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { useAuth } from "@/context/auth-context"
 import {
   ResponsiveContainer,
   Cell,
@@ -82,8 +83,11 @@ interface HRAnalytics {
     tech_passed: number
     manager_passed: number
     rejected: number
-    round1_to_2?: string
-    round2_to_hire?: string
+    // Funnel Transitions
+    resume_to_call: string
+    call_to_hr: string
+    hr_to_tech: string
+    tech_to_manager: string
     overallConversion: string
   }
   hrPerformance: Array<{
@@ -156,6 +160,7 @@ interface Candidate {
   gaps: string
   resumeLink: string
   resumeSummary: string
+  appliedDate: string
   
   // Meeting Details
   hrMeetingDate?: string
@@ -189,7 +194,8 @@ const isNo = (val: any) =>
 
 export default function DashboardPage() {
   const { toast } = useToast()
-  const [userEmail] = useState<string>("guest@example.com")
+  const { user } = useAuth()
+  const userEmail = user?.email || "guest@example.com"
   const router = useRouter()
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -202,7 +208,13 @@ export default function DashboardPage() {
   
   useEffect(() => {
     setIsMounted(true)
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) setGreeting("Good Morning")
+    else if (hour >= 12 && hour < 17) setGreeting("Good Afternoon")
+    else setGreeting("Good Evening")
   }, [])
+
+  const [greeting, setGreeting] = useState("Hi, HR Manager")
 
   const [showCandidatesModal, setShowCandidatesModal] = useState(false)
   const [showHRModal, setShowHRModal] = useState(false)
@@ -306,16 +318,17 @@ export default function DashboardPage() {
           city: String(c.city || c.City || "Unknown"),
           score: typeof c.score === "number" ? c.score : Number.parseFloat(c.score || c.Score || "0") || 0,
           hr: String(c.hr || c["HR Assigned"] || c.hr_assigned || "Unassigned"),
-          resumeDecision: String(c["Resume Decision"] || c.resume_decision || c.decision || c.Decision || "Pending"),
-          callDecision: String(c["Call Decision"] || c.call_decision || "Pending"),
-          hrDecision: String(c["HR Decision"] || c.hr_decision || (c["HR Assigned"] ? "Yes" : "Pending")),
-          techDecision: String(c["Tech Decision"] || c.tech_decision || c.technicalInterview || c["Technical Interview"] || "Pending"),
-          managerDecision: String(c["Manager Decision"] || c.manager_decision || c.finalDecision || c["Final Decision"] || c.final_decision || "Pending"),
+          resumeDecision: String(c["Resume Decision"] || c.resume_decision || c["Resume Screening"] || c.resume_screening || c.decision || c.Decision || "Pending"),
+          callDecision: String(c["Call Decision"] || c.call_decision || c["Call Round"] || c.call_round || c["Call Status"] || c.call_status || "Pending"),
+          hrDecision: String(c["HR Decision"] || c.hr_decision || c["HR Round"] || c.hr_round || (c["HR Assigned"] ? "Yes" : "Pending")),
+          techDecision: String(c["Tech Decision"] || c.tech_decision || c["Tech Interview"] || c.tech_interview || c.technicalInterview || c["Technical Interview"] || "Pending"),
+          managerDecision: String(c["Manager Decision"] || c.manager_decision || c["Final Decision"] || c["Manager Interview"] || c.ManagerInterview || c.final_decision || "Pending"),
           comments: String(c.comments || c.Comments || ""),
           strengths: String(c.strengths || c.Strengths || ""),
           gaps: String(c.gaps || c.Gaps || ""),
           resumeLink: String(c.resumeLink || c["Resume Link"] || ""),
           resumeSummary: String(c.resumeSummary || c["Resume Summary"] || ""),
+          appliedDate: String(c.appliedDate || c.applied_date || c.CreationDate || c.date || ""),
 
           // HR Meeting Details
           hrMeetingDate: c["HR Meeting Date"] || c.HRMeetingDate || "",
@@ -338,18 +351,31 @@ export default function DashboardPage() {
 
         if (normalizedCandidates.length === 0 && !actualData.overview) {
           setHrData({
-            overview: { totalCandidates: 0, avgScore: "0", medianScore: "0", resume_passed: 0, call_passed: 0, hr_passed: 0, tech_passed: 0, manager_passed: 0, rejected: 0, overallConversion: "0%" },
+            overview: { totalCandidates: 0, avgScore: "0", medianScore: "0", resume_passed: 0, call_passed: 0, hr_passed: 0, tech_passed: 0, manager_passed: 0, rejected: 0, resume_to_call: "0%", call_to_hr: "0%", hr_to_tech: "0%", tech_to_manager: "0%", overallConversion: "0%" },
             hrPerformance: [], cityPerformance: [], decisionEffectiveness: "0",
             candidatesByStage: { resume_passed: [], call_passed: [], hr_passed: [], tech_passed: [], manager_passed: [], rejected: [], all: [] },
             campaignCandidates: [], insights: [],
           })
         } else {
+          // Cumulative counts for funnel overview metrics (how many EVER passed each stage)
           const resumePassed = normalizedCandidates.filter(c => isYes(c.resumeDecision))
           const callPassed = normalizedCandidates.filter(c => isYes(c.callDecision))
           const hrPassed = normalizedCandidates.filter(c => isYes(c.hrDecision))
           const techPassed = normalizedCandidates.filter(c => isYes(c.techDecision))
           const managerPassed = normalizedCandidates.filter(c => isYes(c.managerDecision))
           const rejectedCands = normalizedCandidates.filter(c => 
+            isNo(c.resumeDecision) || isNo(c.callDecision) || 
+            isNo(c.hrDecision) || isNo(c.techDecision) || 
+            isNo(c.managerDecision)
+          )
+
+          // Stage TABS: each candidate appears only in their HIGHEST cleared stage
+          const stageManagerPassed  = normalizedCandidates.filter(c => isYes(c.managerDecision))
+          const stageTechPassed     = normalizedCandidates.filter(c => isYes(c.techDecision) && !isYes(c.managerDecision))
+          const stageHrPassed       = normalizedCandidates.filter(c => isYes(c.hrDecision) && !isYes(c.techDecision) && !isYes(c.managerDecision))
+          const stageCallPassed     = normalizedCandidates.filter(c => isYes(c.callDecision) && !isYes(c.hrDecision) && !isYes(c.techDecision) && !isYes(c.managerDecision))
+          const stageResumePassed   = normalizedCandidates.filter(c => isYes(c.resumeDecision) && !isYes(c.callDecision) && !isYes(c.hrDecision) && !isYes(c.techDecision) && !isYes(c.managerDecision))
+          const stageRejected       = normalizedCandidates.filter(c => 
             isNo(c.resumeDecision) || isNo(c.callDecision) || 
             isNo(c.hrDecision) || isNo(c.techDecision) || 
             isNo(c.managerDecision)
@@ -400,8 +426,10 @@ export default function DashboardPage() {
             tech_passed: techPassed.length,
             manager_passed: managerPassed.length,
             rejected: rejectedCands.length,
-            round1_to_2: (hrPassed.length > 0 ? ((techPassed.length / hrPassed.length) * 100).toFixed(0) + "%" : "0%"),
-            round2_to_hire: (techPassed.length > 0 ? ((managerPassed.length / techPassed.length) * 100).toFixed(0) + "%" : "0%"),
+            resume_to_call: (resumePassed.length > 0 ? ((callPassed.length / resumePassed.length) * 100).toFixed(0) + "%" : "0%"),
+            call_to_hr: (callPassed.length > 0 ? ((hrPassed.length / callPassed.length) * 100).toFixed(0) + "%" : "0%"),
+            hr_to_tech: (hrPassed.length > 0 ? ((techPassed.length / hrPassed.length) * 100).toFixed(0) + "%" : "0%"),
+            tech_to_manager: (techPassed.length > 0 ? ((managerPassed.length / techPassed.length) * 100).toFixed(0) + "%" : "0%"),
             overallConversion: (totalCands > 0 ? ((managerPassed.length / totalCands) * 100).toFixed(0) + "%" : "0%"),
           },
           overall: actualData.overall || actualData.overview || {},
@@ -411,12 +439,12 @@ export default function DashboardPage() {
           cityPerformance: cityPerformance.length > 0 ? cityPerformance : calculatedCityPerf,
           decisionEffectiveness: actualData.decisionEffectiveness || avgScore,
           candidatesByStage: {
-            resume_passed: resumePassed,
-            call_passed: callPassed,
-            hr_passed: hrPassed,
-            tech_passed: techPassed,
-            manager_passed: managerPassed,
-            rejected: rejectedCands,
+            resume_passed: stageResumePassed,
+            call_passed: stageCallPassed,
+            hr_passed: stageHrPassed,
+            tech_passed: stageTechPassed,
+            manager_passed: stageManagerPassed,
+            rejected: stageRejected,
             all: normalizedCandidates,
           },
           campaignCandidates: normalizedCandidates,
@@ -588,12 +616,12 @@ export default function DashboardPage() {
   const cityPerformance = hrData?.cityPerformance || []
 
   const stageDistributionData = [
-    { name: "Resume", value: hrData?.overview?.resume_passed || 0, fill: "#8b5cf6" },
-    { name: "Call", value: hrData?.overview?.call_passed || 0, fill: "#3b82f6" },
-    { name: "HR", value: hrData?.overview?.hr_passed || 0, fill: "#10b981" },
-    { name: "Tech", value: hrData?.overview?.tech_passed || 0, fill: "#f59e0b" },
-    { name: "Manager", value: hrData?.overview?.manager_passed || 0, fill: "#ef4444" },
-  ].filter((item) => item.value > 0)
+    { name: "Resume Screening", value: hrData?.overview?.resume_passed || 0, fill: "#8b5cf6" },
+    { name: "Call Round", value: hrData?.overview?.call_passed || 0, fill: "#3b82f6" },
+    { name: "HR Round", value: hrData?.overview?.hr_passed || 0, fill: "#10b981" },
+    { name: "Tech Interview", value: hrData?.overview?.tech_passed || 0, fill: "#f59e0b" },
+    { name: "Manager Interview", value: hrData?.overview?.manager_passed || 0, fill: "#ef4444" },
+  ] // Removed filter to ensure all rounds show in legend even if 0
 
   const scoreRangeData =
     hrPerformance.length > 0
@@ -628,7 +656,7 @@ export default function DashboardPage() {
     { stage: "HR Passed", value: hrData?.overview?.hr_passed || 0, fill: "#10b981" },
     { stage: "Tech Passed", value: hrData?.overview?.tech_passed || 0, fill: "#6366f1" },
     { stage: "Manager Passed", value: hrData?.overview?.manager_passed || 0, fill: "#ec4899" },
-  ].filter((item) => item.value > 0)
+  ]
 
   // Updated HRs mapping for new schema
   const topHRs = hrPerformance.map((hr) => {
@@ -709,7 +737,17 @@ export default function DashboardPage() {
 
   const getCandidatesByStage = () => {
     if (!hrData?.candidatesByStage) return []
-    return hrData.candidatesByStage[candidateStageFilter as keyof typeof hrData.candidatesByStage] || []
+    const stageKeyMap: Record<string, keyof typeof hrData.candidatesByStage> = {
+      all: "all",
+      resume: "resume_passed",
+      call: "call_passed",
+      hr: "hr_passed",
+      tech: "tech_passed",
+      manager: "manager_passed",
+      rejected: "rejected",
+    }
+    const key = stageKeyMap[candidateStageFilter] || "all"
+    return hrData.candidatesByStage[key] || []
   }
 
   // Using sortedCandidates instead of filteredCandidates
@@ -745,7 +783,7 @@ export default function DashboardPage() {
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3">
               <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
-                Hi, HR Manager
+                {greeting}
               </h1>
               <p className="text-muted-foreground text-lg font-medium">This is your HR analytics dashboard</p>
               <div className="flex items-center gap-4 pt-2">
@@ -768,12 +806,12 @@ export default function DashboardPage() {
                 <SelectTrigger className="w-[240px] bg-card border-border text-foreground hover:bg-muted transition-colors">
                   <SelectValue placeholder={loadingCampaigns ? "Loading..." : "Select Campaign"}>
                     {selectedCampaign === "all"
-                      ? "All Campaigns"
+                      ? "Select campaign for analytics"
                       : campaigns.find((c) => c.CampaignName === selectedCampaign)?.CampaignName || selectedCampaign}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  <SelectItem value="all">All Campaigns</SelectItem>
+                  <SelectItem value="all">Select campaign for analytics</SelectItem>
                   {loadingCampaigns ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="size-4 animate-spin text-slate-400" />
@@ -824,16 +862,28 @@ export default function DashboardPage() {
               {expandedCard === "total" && (
                 <div className="mt-4 pt-4 border-t border-border space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">HR Passed:</span>
+                    <span className="text-muted-foreground">Resume Pass:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.resume_passed || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Call Pass:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.call_passed || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">HR Pass:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.hr_passed || 0}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Tech Passed:</span>
+                    <span className="text-muted-foreground">Tech Pass:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.tech_passed || 0}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Pending:</span>
-                    <span className="text-amber-500 font-semibold">{pendingRate}%</span>
+                    <span className="text-muted-foreground">Manager Pass:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.manager_passed || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t border-border mt-1">
+                    <span className="text-muted-foreground font-bold">Total Hired:</span>
+                    <span className="text-emerald-500 font-bold">{finalHired}</span>
                   </div>
                 </div>
               )}
@@ -894,12 +944,24 @@ export default function DashboardPage() {
               {expandedCard === "hired" && (
                 <div className="mt-4 pt-4 border-t border-border space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Shortlisted → TI:</span>
-                    <span className="text-foreground font-semibold">{hrData?.funnel?.shortlistedToTIPercent || "0%"}</span>
+                    <span className="text-muted-foreground">Resume → Call:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.resume_to_call || "0%"}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Rejected:</span>
-                    <span className="text-red-500 font-semibold">{rejected}</span>
+                    <span className="text-muted-foreground">Call → HR:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.call_to_hr || "0%"}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">HR → Tech:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.hr_to_tech || "0%"}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Tech → Manager:</span>
+                    <span className="text-foreground font-semibold">{hrData?.overview?.tech_to_manager || "0%"}</span>
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t border-border mt-1">
+                    <span className="text-muted-foreground">Rejection Rate:</span>
+                    <span className="text-red-500 font-semibold">{rejected} candidates</span>
                   </div>
                 </div>
               )}

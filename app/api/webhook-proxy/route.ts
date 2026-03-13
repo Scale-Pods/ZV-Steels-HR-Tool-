@@ -26,7 +26,7 @@ const WEBHOOK_MAP: Record<string, string> = {
 
 // These actions are read-only fetches — forward them as GET to n8n
 // (n8n webhook triggers are GET-first by default unless configured otherwise)
-const GET_ACTIONS = new Set(["Campaigns", "Certain Campaign"])
+const GET_ACTIONS = new Set(["Campaigns", "Certain Campaign", "AllCampaign"])
 
 export async function POST(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams

@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -41,6 +41,8 @@ export default function LandingPage() {
 
   const handleDashboardClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    if (loading) return // Do nothing while loading
+    
     if (user) {
       router.push("/dashboard")
     } else {
@@ -58,10 +60,10 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-6 hover:opacity-90 transition-all duration-300">
-            <div className="flex items-center gap-5">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-all duration-300">
+            <div className="flex flex-col items-center gap-1">
               {/* ZV Steels Logo Container */}
-              <div className="relative h-11 w-36 overflow-hidden">
+              <div className="relative h-9 w-24 overflow-hidden">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -70,58 +72,41 @@ export default function LandingPage() {
                   priority
                 />
               </div>
+              <span className="text-[7px] font-bold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">
+                ZV Steels Pvt. Ltd.
+              </span>
+            </div>
 
-              {/* Minimalist Vertical Separator */}
-              <div className="h-8 w-[1.5px] bg-linear-to-b from-transparent via-border/60 to-transparent" />
+            {/* Tight Vertical Separator */}
+            <div className="h-8 w-px bg-border/20" />
 
-              {/* ScalePods Branding */}
-              <div className="flex flex-col items-center justify-center pt-1.5">
-                <span className="text-[8px] font-black uppercase tracking-[0.25em] text-muted-foreground/40 leading-none mb-1.5 text-center">
-                  Powered By
-                </span>
-                <div className="relative h-10 w-40">
-                  <Image
-                    src="/images/scalepods-logo.avif"
-                    alt="Scalepods Logo"
-                    fill
-                    className="object-contain invert dark:invert-0 scale-[1.4] transition-all duration-300 transform hover:scale-[1.5]"
-                  />
-                </div>
+            {/* ScalePods Branding */}
+            <div className="flex flex-col items-center justify-center pt-0">
+              <span className="text-[6px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 leading-none mb-1 text-center">
+                Powered By
+              </span>
+              <div className="relative h-7 w-24">
+                <Image
+                  src="/images/scalepods-logo.avif"
+                  alt="Scalepods Logo"
+                  fill
+                  className="object-contain invert dark:invert-0 scale-[1.2]"
+                />
               </div>
             </div>
           </Link>
           <nav className="hidden gap-8 text-sm md:flex items-center">
-            <Link
-              href="#features"
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-            >
-              Features
-            </Link>
-            <Link
-              href="#benefits"
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-            >
-              Benefits
-            </Link>
-            <button
-              onClick={handleDashboardClick}
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium cursor-pointer"
-            >
-              Dashboard
-            </button>
+            {/* Nav items removed */}
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/sign-in">
-              <Button variant="ghost" size="sm" className="font-semibold">
+              <Button 
+                size="sm" 
+                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 rounded-lg"
+              >
                 Sign In
               </Button>
             </Link>
-            <button
-              onClick={handleDashboardClick}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
-            >
-              Dashboard
-            </button>
           </div>
         </div>
       </header>
@@ -156,15 +141,6 @@ export default function LandingPage() {
               Streamline candidate tracking, automate campaign creation, and make data-driven hiring decisions with our
               comprehensive HR management platform.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button
-                onClick={handleDashboardClick}
-                className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white px-10 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold rounded-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-              >
-                Access Platform
-                <ArrowRight className="h-5 w-5" />
-              </button>
-            </div>
             <p className="mt-8 text-sm text-muted-foreground font-medium uppercase tracking-[0.2em] opacity-60">
               Enterprise Grade Recruitment Infrastructure
             </p>
@@ -422,15 +398,6 @@ export default function LandingPage() {
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
             Join hundreds of companies using HRDashboard to build better teams faster with intelligent automation.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={handleDashboardClick}
-              className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] hover:from-[#7C3AED] hover:to-[#6D28D9] text-white text-lg px-12 py-6 h-auto shadow-2xl shadow-purple-500/30 font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-            >
-              Access Platform
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </div>
           <p className="mt-8 text-sm text-muted-foreground font-semibold">
             Secure • Scaling • Professional
           </p>
@@ -472,16 +439,7 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="#features" className="hover:text-foreground transition-colors">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <button onClick={handleDashboardClick} className="hover:text-foreground transition-colors text-left">
-                    Dashboard
-                  </button>
-                </li>
+                {/* Links removed */}
               </ul>
             </div>
             <div>

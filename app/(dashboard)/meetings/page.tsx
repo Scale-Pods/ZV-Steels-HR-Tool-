@@ -57,6 +57,9 @@ interface Candidate {
   hrMeetingType?: string
   techMeetingType?: string
   managerMeetingType?: string
+  hr?: string
+  tiAssigned?: string
+  managerAssigned?: string
 }
 
 interface Campaign {
@@ -143,27 +146,69 @@ export default function MeetingsPage() {
         candidateDetails: baseCandidate
       }
 
-      const webhookBase = `${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"}`
+      const WEBHOOK_BASE = `${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"}`
       let queryType = "other"
       if (type.includes("hr")) queryType = "hr"
       else if (type.includes("tech")) queryType = "tech"
       else if (type.includes("manager")) queryType = "manager"
 
+      let interviewerEmail = ""
+      if (type.includes("hr")) interviewerEmail = mtg.candidate.hr || ""
+      else if (type.includes("tech")) interviewerEmail = mtg.candidate.tiAssigned || ""
+      else if (type.includes("manager")) interviewerEmail = mtg.candidate.managerAssigned || mtg.candidate.hr || ""
+
       const userRole = mtg.candidate.role || "Admin"
-      const res = await fetch(`${webhookBase}?meetingType=${queryType}&userRole=${encodeURIComponent(userRole)}`, {
+      const params = new URLSearchParams({
+        meetingType: queryType,
+        interviewerEmail: interviewerEmail,
+        eventId: mtg.eventId || "",
+        candidateEmail: mtg.candidate.email,
+        userRole: userRole
+      })
+
+      const res = await fetch(`${WEBHOOK_BASE}?${params.toString()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, userRole })
       })
 
+      const text = await res.text()
+      console.log("[Reschedule] Webhook Response Text:", text)
+      
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        console.warn("[Reschedule] Failed to parse response as JSON:", e)
+        data = { message: text || `Sent postpone/prepone request for ${mtg.candidate.name}` }
+      }
+
+      console.log("[Reschedule] Parsed Response Data:", data)
+
       if (res.ok) {
-        toast({ title: "Reschedule Requested", description: `Sent postpone/prepone request for ${mtg.candidate.name}` })
+        if (data.status === "booked" || data.status === "unavailable") {
+          console.log("[Reschedule] Slot unavailable detected:", data.status)
+          toast({ 
+            title: "Slot Unavailable", 
+            description: data.message || "The selected time slot is already booked. Please choose another.",
+            variant: "destructive"
+          })
+          return
+        }
+        console.log("[Reschedule] Success toast triggered")
+        toast({ title: "Reschedule Success", description: data.message || `Sent postpone/prepone request for ${mtg.candidate.name}` })
         setRescheduleData(prev => ({ ...prev, isOpen: false }))
       } else {
-        throw new Error("Failed to send webhook")
+        console.error("[Reschedule] Webhook error status:", res.status)
+        throw new Error(data.message || `Failed to send webhook: ${res.status}`)
       }
     } catch (e: any) {
-      toast({ title: "Reschedule Failed", description: e.message, variant: "destructive" })
+      console.error("[Reschedule] Catch block error:", e)
+      toast({ 
+        title: "Reschedule Failed", 
+        description: e.message || "An unexpected error occurred while rescheduling.", 
+        variant: "destructive" 
+      })
     } finally {
       setIsRescheduling(null)
     }
@@ -212,6 +257,9 @@ export default function MeetingsPage() {
     hrMeetingType:      c["HR Meeting Type"] || c.HRMeetingType || c.hrMeetingType || "",
     techMeetingType:    c["Tech Meeting Type"] || c.TechMeetingType || c.techMeetingType || "",
     managerMeetingType: c["Manager Meeting Type"] || c.ManagerMeetingType || c.managerMeetingType || "",
+    hr: c.HR || c.hr || "",
+    tiAssigned: c.TIAssigned || c.tiAssigned || "",
+    managerAssigned: c["Manager Assigned"] || c.managerAssigned || "",
   })
 
   const fetchCandidates = async (campaignName: string) => {
@@ -763,13 +811,30 @@ export default function MeetingsPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="reschedule-time">New Time</Label>
-              <Input
-                id="reschedule-time"
-                type="time"
-                className="col-span-3 border-border/50 bg-background"
+              <Select
                 value={rescheduleData.time}
-                onChange={(e) => setRescheduleData(prev => ({ ...prev, time: e.target.value }))}
-              />
+                onValueChange={(v) => setRescheduleData(prev => ({ ...prev, time: v }))}
+              >
+                <SelectTrigger id="reschedule-time" className="col-span-3 border-border/50 bg-background">
+                  <SelectValue placeholder="Select a time slot" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {Array.from({ length: 22 }, (_, i) => {
+                    const totalMins = 9 * 60 + i * 30 // Start at 9:00 AM, 30-min slots
+                    const h24 = Math.floor(totalMins / 60)
+                    const min = totalMins % 60
+                    const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+                    const ampm = h24 < 12 ? "AM" : "PM"
+                    const label = `${h12}:${min === 0 ? "00" : "30"} ${ampm}`
+                    const value = `${String(h24).padStart(2, "0")}:${min === 0 ? "00" : "30"}`
+                    return (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter className="flex gap-2 sm:gap-0">

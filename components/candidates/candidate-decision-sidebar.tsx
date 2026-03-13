@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react"
 import {
   User,
   Mail,
@@ -23,6 +23,7 @@ import {
   Send,
   CheckCircle,
   MessageCircle,
+  CalendarClock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,6 +33,9 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CandidateDecisionData {
   CampaignName: string
@@ -119,8 +123,13 @@ interface CandidateDetails {
 interface CandidateDecisionSidebarContentProps {
   campaignName: string
   candidateEmail: string
-  candidateDetails?: CandidateDetails
+  candidateDetails?: CandidateDetails | null
   onSuccess?: () => void
+  hideSubmit?: boolean
+}
+
+export interface CandidateDecisionSidebarRef {
+  submit: () => void
 }
 
 // Yes/No decision button group
@@ -197,15 +206,126 @@ function StatusPill({ value }: { value: string }) {
   )
 }
 
-export function CandidateDecisionSidebarContent({
+export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSidebarRef, CandidateDecisionSidebarContentProps>(({
   campaignName,
   candidateEmail,
   candidateDetails,
   onSuccess,
-}: CandidateDecisionSidebarContentProps) {
+  hideSubmit = false,
+}, ref) => {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedRound, setExpandedRound] = useState<number>(0)
+
+  useImperativeHandle(ref, () => ({
+    submit: handleSubmit
+  }))
+
+  // Reschedule dialog state
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
+    isOpen: boolean
+    meetingType: "hr" | "tech" | "manager" | null
+    interviewerEmail: string
+    eventId: string
+    date: string
+    time: string
+    isSubmitting: boolean
+  }>({
+    isOpen: false,
+    meetingType: null,
+    interviewerEmail: "",
+    eventId: "",
+    date: "",
+    time: "",
+    isSubmitting: false,
+  })
+
+  const openReschedule = (meetingType: "hr" | "tech" | "manager", interviewerEmail: string, eventId: string) => {
+    const today = new Date().toISOString().split("T")[0]
+    setRescheduleDialog({
+      isOpen: true,
+      meetingType,
+      interviewerEmail,
+      eventId,
+      date: today,
+      time: "",
+      isSubmitting: false,
+    })
+  }
+
+  const submitReschedule = async () => {
+    const { meetingType, interviewerEmail, eventId, date, time } = rescheduleDialog
+    if (!meetingType || !date || !time) return
+    setRescheduleDialog(prev => ({ ...prev, isSubmitting: true }))
+    try {
+      const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"
+      const RESCHEDULE_ID = process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"
+      const params = new URLSearchParams({
+        meetingType,
+        interviewerEmail,
+        eventId,
+        candidateEmail,
+        userRole: "Admin",
+      })
+      const res = await fetch(`${WEBHOOK_BASE}/${RESCHEDULE_ID}?${params.toString()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "Reschedule",
+          campaignName,
+          candidateEmail,
+          meetingType,
+          newDate: date,
+          newTime: time,
+          eventId,
+          interviewerEmail,
+        }),
+      })
+      const text = await res.text()
+      console.log("[Reschedule] Webhook Response Text:", text)
+      
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        console.warn("[Reschedule] Failed to parse response as JSON:", e)
+        data = { message: text || `Reschedule request sent for ${meetingType.toUpperCase()} round.` }
+      }
+
+      console.log("[Reschedule] Parsed Response Data:", data)
+
+      if (res.ok) {
+        if (data.status === "booked" || data.status === "unavailable") {
+          console.log("[Reschedule] Slot unavailable detected:", data.status)
+          toast({ 
+            title: "Slot Unavailable", 
+            description: data.message || "The selected time slot is already booked. Please choose another.",
+            variant: "destructive"
+          })
+          return
+        }
+        
+        console.log("[Reschedule] Success toast triggered")
+        toast({ 
+          title: "Reschedule Success", 
+          description: data.message || `Reschedule request sent for ${meetingType.toUpperCase()} round.` 
+        })
+        setRescheduleDialog(prev => ({ ...prev, isOpen: false }))
+      } else {
+        console.error("[Reschedule] Webhook error status:", res.status)
+        throw new Error(data.message || `Webhook returned error status: ${res.status}`)
+      }
+    } catch (e: any) {
+      console.error("[Reschedule] Catch block error:", e)
+      toast({ 
+        title: "Reschedule Failed", 
+        description: e.message || "An unexpected error occurred while rescheduling.", 
+        variant: "destructive" 
+      })
+    } finally {
+      setRescheduleDialog(prev => ({ ...prev, isSubmitting: false }))
+    }
+  }
 
   // Call Round data fetched from webhook
   const [callRoundData, setCallRoundData] = useState<CallRoundData | null>(null)
@@ -422,14 +542,30 @@ export function CandidateDecisionSidebarContent({
       console.log("[v0] Submitting candidate decision:", submitData)
 
       // 1. Move round statuses to Query Parameters
-      const queryParams = new URLSearchParams({ 
-        action: "UpdateDecision",
-        "Resume Screening": formData["Resume Screening"] || "",
-        "Call Round": formData["Call Round"] || "",
-        "HR Round": formData["HR Round"] || "",
-        "Tech Interview": formData["Tech Interview"] || "",
-        "Manager Interview": formData["Manager Interview"] || ""
-      })
+      // ONLY send the records that have actually been modified to prevent wiping other backend records
+      const queryParams = new URLSearchParams({ action: "UpdateDecision" })
+
+      const origResume = candidateDetails?.ResumeScreening || candidateDetails?.["Resume Decision"] || candidateDetails?.Decision || ""
+      const origCall = candidateDetails?.CallRound || candidateDetails?.["Call Decision"] || candidateDetails?.["Call Status"] || ""
+      const origHR = candidateDetails?.HRRound || candidateDetails?.["HR Decision"] || ""
+      const origTech = candidateDetails?.TechInterviewRound || candidateDetails?.["Tech Decision"] || candidateDetails?.TechnicalInterview || ""
+      const origManager = candidateDetails?.ManagerInterview || candidateDetails?.["Manager Decision"] || candidateDetails?.FinalDecision || ""
+
+      if (formData["Resume Screening"] && formData["Resume Screening"] !== origResume) {
+        queryParams.append("Resume Screening", formData["Resume Screening"])
+      }
+      if (formData["Call Round"] && formData["Call Round"] !== origCall) {
+        queryParams.append("Call Round", formData["Call Round"])
+      }
+      if (formData["HR Round"] && formData["HR Round"] !== origHR) {
+        queryParams.append("HR Round", formData["HR Round"])
+      }
+      if (formData["Tech Interview"] && formData["Tech Interview"] !== origTech) {
+        queryParams.append("Tech Interview", formData["Tech Interview"])
+      }
+      if (formData["Manager Interview"] && formData["Manager Interview"] !== origManager) {
+        queryParams.append("Manager Interview", formData["Manager Interview"])
+      }
 
       // 2. Build Body with strictly static details + updated comments
       const bodyData: any = {
@@ -1246,16 +1382,33 @@ function StructuredValue({
                               </div>
                             )}
                           </div>
-                          {candidateDetails.HRMeetingLink && (
-                            <Button 
-                              size="sm"
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-xs font-bold gap-2"
-                              onClick={() => window.open(candidateDetails.HRMeetingLink, "_blank")}
-                            >
-                              <ExternalLink className="size-3.5" />
-                              Join Meeting Now
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {candidateDetails.HRMeetingLink && (
+                              <Button 
+                                size="sm"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-xs font-bold gap-2"
+                                onClick={() => window.open(candidateDetails.HRMeetingLink, "_blank")}
+                              >
+                                <ExternalLink className="size-3.5" />
+                                Join Meeting Now
+                              </Button>
+                            )}
+                            {candidateDetails.HREventID && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10 text-xs font-bold gap-2"
+                                onClick={() => openReschedule(
+                                  "hr",
+                                  candidateDetails.HR || "",
+                                  candidateDetails.HREventID || ""
+                                )}
+                              >
+                                <CalendarClock className="size-3.5" />
+                                Reschedule
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -1314,16 +1467,33 @@ function StructuredValue({
                               </div>
                             )}
                           </div>
-                          {candidateDetails.TechMeetingLink && (
-                            <Button 
-                              size="sm"
-                              className="w-full bg-amber-600 hover:bg-amber-700 text-xs font-bold gap-2"
-                              onClick={() => window.open(candidateDetails.TechMeetingLink, "_blank")}
-                            >
-                              <ExternalLink className="size-3.5" />
-                              Join Tech Interview
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {candidateDetails.TechMeetingLink && (
+                              <Button 
+                                size="sm"
+                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-xs font-bold gap-2"
+                                onClick={() => window.open(candidateDetails.TechMeetingLink, "_blank")}
+                              >
+                                <ExternalLink className="size-3.5" />
+                                Join Tech Interview
+                              </Button>
+                            )}
+                            {candidateDetails.TechEventID && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-bold gap-2"
+                                onClick={() => openReschedule(
+                                  "tech",
+                                  candidateDetails.TIAssigned || "",
+                                  candidateDetails.TechEventID || ""
+                                )}
+                              >
+                                <CalendarClock className="size-3.5" />
+                                Reschedule
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -1382,16 +1552,33 @@ function StructuredValue({
                               </div>
                             )}
                           </div>
-                          {candidateDetails.ManagerMeetingLink && (
-                            <Button 
-                              size="sm"
-                              className="w-full bg-violet-600 hover:bg-violet-700 text-xs font-bold gap-2"
-                              onClick={() => window.open(candidateDetails.ManagerMeetingLink, "_blank")}
-                            >
-                              <ExternalLink className="size-3.5" />
-                              Join Manager Interview
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {candidateDetails.ManagerMeetingLink && (
+                              <Button 
+                                size="sm"
+                                className="flex-1 bg-violet-600 hover:bg-violet-700 text-xs font-bold gap-2"
+                                onClick={() => window.open(candidateDetails.ManagerMeetingLink, "_blank")}
+                              >
+                                <ExternalLink className="size-3.5" />
+                                Join Manager Interview
+                              </Button>
+                            )}
+                            {candidateDetails.ManagerEventID && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 border-violet-500/40 text-violet-400 hover:bg-violet-500/10 text-xs font-bold gap-2"
+                                onClick={() => openReschedule(
+                                  "manager",
+                                  candidateDetails["Manager Assigned"] || candidateDetails.HR || "",
+                                  candidateDetails.ManagerEventID || ""
+                                )}
+                              >
+                                <CalendarClock className="size-3.5" />
+                                Reschedule
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -1490,25 +1677,104 @@ function StructuredValue({
       <Separator className="bg-slate-700/50" />
 
       {/* Submit */}
-      <div className="flex gap-3 pt-1">
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/10"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="size-4" />
-              Save Decisions
-            </>
-          )}
-        </Button>
-      </div>
+      {!hideSubmit && (
+        <div className="flex gap-3 pt-1">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/10"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="size-4" />
+                Save Decisions
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleDialog.isOpen} onOpenChange={(open) => setRescheduleDialog(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <CalendarClock className="size-5 text-blue-400" />
+              Reschedule {rescheduleDialog.meetingType?.toUpperCase()} Meeting
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {rescheduleDialog.interviewerEmail && (
+              <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs">
+                <p className="text-slate-400 mb-1">Interviewer</p>
+                <p className="text-slate-200 font-medium">{rescheduleDialog.interviewerEmail}</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label className="text-slate-300 text-xs">New Date</Label>
+              <Input
+                type="date"
+                value={rescheduleDialog.date}
+                onChange={(e) => setRescheduleDialog(prev => ({ ...prev, date: e.target.value }))}
+                min={new Date().toISOString().split("T")[0]}
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300 text-xs">New Time</Label>
+              <Select
+                value={rescheduleDialog.time}
+                onValueChange={(v) => setRescheduleDialog(prev => ({ ...prev, time: v }))}
+              >
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                  <SelectValue placeholder="Select a time slot" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-700 text-white max-h-60">
+                  {Array.from({ length: 22 }, (_, i) => {
+                    const totalMins = 9 * 60 + i * 30 // Start at 9:00 AM, 30-min slots
+                    const h24 = Math.floor(totalMins / 60)
+                    const min = totalMins % 60
+                    const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+                    const ampm = h24 < 12 ? "AM" : "PM"
+                    const label = `${h12}:${min === 0 ? "00" : "30"} ${ampm}`
+                    const value = `${String(h24).padStart(2, "0")}:${min === 0 ? "00" : "30"}`
+                    return (
+                      <SelectItem key={value} value={value} className="text-slate-200 focus:bg-slate-700 focus:text-white">
+                        {label}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setRescheduleDialog(prev => ({ ...prev, isOpen: false }))}
+              className="text-slate-400 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitReschedule}
+              disabled={!rescheduleDialog.date || !rescheduleDialog.time || rescheduleDialog.isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
+            >
+              {rescheduleDialog.isSubmitting ? (
+                <><Loader2 className="size-4 animate-spin" /> Sending...</>
+              ) : (
+                <><CalendarClock className="size-4" /> Confirm Reschedule</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-}
+})

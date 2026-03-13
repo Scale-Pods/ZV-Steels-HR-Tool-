@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import {
   X,
   Mail,
@@ -11,16 +11,11 @@ import {
   Award,
   FileText,
   Download,
-  Flag,
   ExternalLink,
   User,
   AlertCircle,
-  MessageCircle,
   CheckCircle,
-  Clock,
-  Send,
-  MessageSquare,
-  PhoneCall,
+  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,21 +24,22 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { CandidateDecisionSidebarContent } from "./candidate-decision-sidebar"
+import { useRef } from "react"
+import { CandidateDecisionSidebarContent, type CandidateDecisionSidebarRef } from "./candidate-decision-sidebar"
 
-interface Candidate {
+export interface Candidate {
   CandidateID: string
-  Name: string
+  Name?: string
   Email: string
-  City: string
-  HR: string
-  Score: number
-  Decision: string
-  FinalDecision: string
-  ResumeLink: string
-  TechnicalInterview: string
-  Experience: string
-  RoleApplied: string
+  City?: string
+  HR?: string
+  Score?: number
+  Decision?: string
+  FinalDecision?: string
+  ResumeLink?: string
+  TechnicalInterview?: string
+  Experience?: string
+  RoleApplied?: string
   PhoneNumber?: string
   ResumeSummary?: string
   Strengths?: string
@@ -89,21 +85,28 @@ export function CandidateDetailSidebar({
   onDecisionUpdate,
 }: CandidateDetailSidebarProps) {
   const { toast } = useToast()
+  const [activeTab, setActiveTab] = useState("profile")
+  const decisionRef = useRef<CandidateDecisionSidebarRef>(null)
 
-  const embedUrl = useMemo(() => {
+
+  const driveFileId = useMemo(() => {
     if (!candidate?.ResumeLink) return null
     const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/]
     for (const pattern of patterns) {
       const match = candidate.ResumeLink.match(pattern)
-      if (match && match[1]) {
-        return `https://drive.google.com/file/d/${match[1]}/preview`
-      }
-    }
-    if (candidate.ResumeLink.includes("/preview")) {
-      return candidate.ResumeLink
+      if (match && match[1]) return match[1]
     }
     return null
   }, [candidate])
+
+  // Use the direct download/export URL which doesn't require Google sign-in
+  const embedUrl = driveFileId
+    ? `https://drive.google.com/file/d/${driveFileId}/preview`
+    : null
+
+  const downloadUrl = driveFileId
+    ? `https://drive.google.com/uc?export=download&id=${driveFileId}`
+    : candidate?.ResumeLink || null
 
   const normalizeDecision = (val: any): string => {
     if (!val) return ""
@@ -234,13 +237,6 @@ export function CandidateDetailSidebar({
     }
   }
 
-  const handleFlagForReview = () => {
-    toast({
-      title: "Flagged for Review",
-      description: `${candidate?.Name} has been flagged for additional review.`,
-    })
-  }
-
   const getDecisionColor = (decision: string) => {
     const lowerDecision = decision?.toLowerCase()
     if (lowerDecision === "yes" || lowerDecision === "selected") {
@@ -299,146 +295,171 @@ export function CandidateDetailSidebar({
             className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[700px] bg-gradient-to-br from-slate-900 to-slate-800 border-l border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
           >
             {candidate && (
-              <div className="p-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-start justify-between sticky top-0 bg-gradient-to-br from-slate-900 to-slate-800 pb-4 border-b border-slate-700/50 z-10">
-                  <div className="flex items-center gap-4">
-                    <div className="size-16 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                      {candidate.Name && candidate.Name.trim() !== ""
-                        ? candidate.Name.charAt(0).toUpperCase()
-                        : candidate.Email
-                          ? candidate.Email.charAt(0).toUpperCase()
-                          : "?"}
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-white drop-shadow-sm flex items-center gap-2">
-                        {candidate.Name && candidate.Name.trim() !== "" ? (
-                          candidate.Name
-                        ) : (
-                          <>
-                            <AlertCircle className="size-5 text-amber-400" />
-                            <span className="text-amber-400">
-                              {candidate.Email ? candidate.Email.split("@")[0] : "Unnamed Candidate"}
-                            </span>
-                          </>
-                        )}
-                      </h2>
-                      <p className="text-slate-400 text-sm">{candidate.Email || "No email provided"}</p>
+              <div className="space-y-0">
 
-                      {pipelineProgress && (
-                        <div className="mt-3 space-y-1.5 w-full">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <Briefcase className="size-3 text-blue-400" />
-                            <span className="text-xs font-medium text-slate-300">Interview Pipeline</span>
-                          </div>
+                {/* ── PIPELINE TRACKER (top, full-width) ── */}
+                {pipelineProgress && (() => {
+                  const stageConfig = [
+                    { colors: { active: "from-violet-500 to-purple-600", glow: "shadow-violet-500/40", text: "text-violet-300", bar: "bg-violet-500", pill: "bg-violet-500/20 text-violet-300 border-violet-500/30" } },
+                    { colors: { active: "from-cyan-500 to-blue-600",   glow: "shadow-cyan-500/40",   text: "text-cyan-300",   bar: "bg-cyan-500",   pill: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" } },
+                    { colors: { active: "from-emerald-500 to-green-600", glow: "shadow-emerald-500/40", text: "text-emerald-300", bar: "bg-emerald-500", pill: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" } },
+                    { colors: { active: "from-amber-500 to-orange-600", glow: "shadow-amber-500/40",  text: "text-amber-300",  bar: "bg-amber-500",  pill: "bg-amber-500/20 text-amber-300 border-amber-500/30" } },
+                    { colors: { active: "from-fuchsia-500 to-pink-600", glow: "shadow-fuchsia-500/40", text: "text-fuchsia-300", bar: "bg-fuchsia-500", pill: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30" } },
+                  ]
+                  return (
+                    <div className="sticky top-0 z-20 bg-linear-to-b from-slate-900 via-slate-900 to-slate-900/95 border-b border-slate-700/60 px-6 pt-5 pb-4 shadow-xl shadow-slate-900/60">
+                      {/* Close button row */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Interview Progress</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={onClose}
+                          className="size-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
 
-                          {/* Horizontal Layout - scrollable on small screens */}
-                          <div className="flex items-center gap-1 overflow-x-auto pb-1 hide-scrollbar">
-                            {pipelineProgress.stages.map((stage, index) => {
-                              const isCurrent = index === pipelineProgress.currentStageIndex
-                              const isPast = index < pipelineProgress.currentStageIndex
-                              const isRejected = stage.isRejected
-                              
-                              let bgClass = "bg-slate-800/30 border-slate-700/30"
-                              let iconBg = "bg-slate-700"
-                              let iconColor = "text-slate-400"
-                              let textClass = "text-slate-500"
-                              let connector = "bg-slate-700/50"
-                              
-                              if (isRejected) {
-                                bgClass = "bg-gradient-to-br from-red-500/20 to-red-400/20 border-red-500/40"
-                                iconBg = "bg-red-500"
-                                iconColor = "text-white"
-                                textClass = "text-red-300"
-                                connector = "bg-red-500"
-                              } else if (isPast || stage.isPassed) {
-                                bgClass = stage.classes.pastBg
-                                iconBg = stage.classes.pastIconBg
-                                iconColor = "text-white"
-                                textClass = stage.classes.pastText
-                                connector = stage.classes.connector
-                              } else if (isCurrent) {
-                                bgClass = stage.classes.currentBg
-                                iconBg = "bg-slate-700/50"
-                                iconColor = stage.classes.currentIconText
-                                textClass = stage.classes.currentText
-                              }
-                              
-                              const Icon = stage.icon
+                      {/* Stages row */}
+                      <div className="flex items-center gap-0">
+                        {pipelineProgress.stages.map((stage, index) => {
+                          const cfg = stageConfig[index]
+                          const isPassed = stage.isPassed
+                          const isRejected = stage.isRejected
+                          const isCurrent = index === pipelineProgress.currentStageIndex && !isRejected
+                          const isPending = !isPassed && !isRejected && !isCurrent
+                          const Icon = stage.icon
+                          const isLast = index === pipelineProgress.stages.length - 1
 
-                              return (
-                                <div key={stage.key} className="flex items-center shrink-0">
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.1 * index }}
-                                    className={cn(
-                                      "flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border w-20",
-                                      bgClass
+                          return (
+                            <div key={stage.key} className="flex items-center flex-1 min-w-0">
+                              {/* Stage card */}
+                              <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.07 * index, type: "spring", stiffness: 300 }}
+                                className="flex flex-col items-center gap-2 flex-1"
+                              >
+                                {/* Icon circle */}
+                                <div className="relative">
+                                  <div className={cn(
+                                    "size-11 rounded-full flex items-center justify-center border-2 transition-all duration-300",
+                                    isPassed
+                                      ? `bg-gradient-to-br ${cfg.colors.active} border-transparent shadow-lg ${cfg.colors.glow}`
+                                      : isRejected
+                                        ? "bg-red-500/20 border-red-500/60 shadow-lg shadow-red-500/30"
+                                        : isCurrent
+                                          ? "bg-slate-800 border-dashed border-slate-500 shadow-lg shadow-slate-500/20"
+                                          : "bg-slate-800/60 border-slate-700/40"
+                                  )}>
+                                    {isPassed ? (
+                                      <CheckCircle className="size-5 text-white drop-shadow" />
+                                    ) : isRejected ? (
+                                      <X className="size-5 text-red-400" />
+                                    ) : (
+                                      <Icon className={cn("size-4", isCurrent ? cfg.colors.text : "text-slate-600")} />
                                     )}
-                                  >
-                                    <div className={cn("size-6 rounded-full flex items-center justify-center", iconBg)}>
-                                      {isRejected ? (
-                                        <X className={cn("size-3.5", iconColor)} />
-                                      ) : isPast || stage.isPassed ? (
-                                        <CheckCircle className={cn("size-3.5", iconColor)} />
-                                      ) : (
-                                        <Icon className={cn("size-3.5", iconColor)} />
-                                      )}
-                                    </div>
-                                    <div className="text-center w-full">
-                                      <div className="flex flex-col items-center gap-0.5">
-                                        <span className={cn("text-[9px] font-medium leading-tight", textClass)}>
-                                          {stage.label}
-                                        </span>
-                                        {isCurrent && !isRejected && (
-                                          <motion.span
-                                            animate={{ opacity: [1, 0.5, 1] }}
-                                            transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2 }}
-                                            className={cn(
-                                              "text-[8px] px-1 py-0.5 rounded border mt-0.5 whitespace-nowrap",
-                                              stage.classes.currentPill
-                                            )}
-                                          >
-                                            IN PROGRESS
-                                          </motion.span>
-                                        )}
-                                        {isRejected && (
-                                          <span className="text-[8px] px-1 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 mt-0.5">
-                                            REJECTED
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                  
-                                  {/* Connector logic */}
-                                  {index < pipelineProgress.stages.length - 1 && (
-                                    <div className="flex items-center px-0.5">
-                                      <div
-                                        className={cn(
-                                          "h-0.5 w-3",
-                                          connector
-                                        )}
-                                      />
-                                    </div>
+                                  </div>
+                                  {/* Pulse ring for current stage */}
+                                  {isCurrent && (
+                                    <motion.div
+                                      animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+                                      transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                                      className="absolute inset-0 rounded-full border border-slate-400/50"
+                                    />
                                   )}
                                 </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
+
+                                {/* Label */}
+                                <span className={cn(
+                                  "text-[10px] font-bold tracking-wide truncate max-w-[64px] text-center",
+                                  isPassed ? cfg.colors.text : isRejected ? "text-red-400" : isCurrent ? "text-slate-300" : "text-slate-600"
+                                )}>
+                                  {stage.label}
+                                </span>
+
+                                {/* Status pill */}
+                                {isPassed && (
+                                  <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide", cfg.colors.pill)}>
+                                    Passed
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-red-500/20 text-red-300 border-red-500/30">
+                                    Rejected
+                                  </span>
+                                )}
+                                {isCurrent && (
+                                  <motion.span
+                                    animate={{ opacity: [1, 0.4, 1] }}
+                                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-slate-700/60 text-slate-400 border-slate-600/50"
+                                  >
+                                    Active
+                                  </motion.span>
+                                )}
+                                {isPending && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-slate-800/60 text-slate-600 border-slate-700/30">
+                                    Pending
+                                  </span>
+                                )}
+                              </motion.div>
+
+                              {/* Connector bar */}
+                              {!isLast && (
+                                <div className="flex-1 mx-1 h-0.5 min-w-[8px] relative overflow-hidden rounded-full bg-slate-700/40">
+                                  {isPassed && (
+                                    <motion.div
+                                      initial={{ scaleX: 0 }}
+                                      animate={{ scaleX: 1 }}
+                                      transition={{ delay: 0.07 * index + 0.2, duration: 0.4 }}
+                                      style={{ transformOrigin: "left" }}
+                                      className={cn("absolute inset-0 rounded-full", cfg.colors.bar)}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
+                  )
+                })()}
+
+                <div className="p-6 space-y-6">
+                {/* Header */}
+                <div className="flex items-center gap-4 pb-4 border-b border-slate-700/50">
+                  <div className="size-14 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0">
+                    {candidate.Name && candidate.Name.trim() !== ""
+                      ? candidate.Name.charAt(0).toUpperCase()
+                      : candidate.Email
+                        ? candidate.Email.charAt(0).toUpperCase()
+                        : "?"}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClose}
-                    className="text-slate-400 hover:text-white hover:bg-slate-800"
-                  >
-                    <X className="size-5" />
-                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-bold text-white drop-shadow-sm flex items-center gap-2 truncate">
+                      {candidate.Name && candidate.Name.trim() !== "" ? (
+                        candidate.Name
+                      ) : (
+                        <>
+                          <AlertCircle className="size-5 text-amber-400 shrink-0" />
+                          <span className="text-amber-400 truncate">
+                            {candidate.Email ? candidate.Email.split("@")[0] : "Unnamed Candidate"}
+                          </span>
+                        </>
+                      )}
+                    </h2>
+                    <p className="text-slate-400 text-sm truncate">{candidate.Email || "No email provided"}</p>
+                    {candidate.RoleApplied && (
+                      <span className="inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {candidate.RoleApplied}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quick Info */}
@@ -495,8 +516,8 @@ export function CandidateDetailSidebar({
                       <div className="text-right space-y-2">
                         <div>
                           <p className="text-xs text-slate-400 mb-1">Decision</p>
-                          <Badge className={getDecisionColor(candidate.Decision)}>
-                            {getDecisionIcon(candidate.Decision)} {candidate.Decision || "Pending"}
+                          <Badge className={getDecisionColor(candidate.Decision || "")}>
+                            {getDecisionIcon(candidate.Decision || "")} {candidate.Decision || "Pending"}
                           </Badge>
                         </div>
                       </div>
@@ -524,18 +545,18 @@ export function CandidateDetailSidebar({
                 </Card>
 
                 {/* Tabs */}
-                <Tabs defaultValue="profile" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-4 bg-slate-800/50 border border-slate-700/50">
-                    <TabsTrigger value="profile" className="data-[state=active]:bg-emerald-600">
+                    <TabsTrigger value="profile" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Profile
                     </TabsTrigger>
-                    <TabsTrigger value="evaluation" className="data-[state=active]:bg-emerald-600">
+                    <TabsTrigger value="evaluation" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Evaluation
                     </TabsTrigger>
-                    <TabsTrigger value="resume" className="data-[state=active]:bg-emerald-600">
+                    <TabsTrigger value="resume" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Resume
                     </TabsTrigger>
-                    <TabsTrigger value="decision" className="data-[state=active]:bg-emerald-600">
+                    <TabsTrigger value="decision" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Decision
                     </TabsTrigger>
                   </TabsList>
@@ -602,6 +623,7 @@ export function CandidateDetailSidebar({
                       </Card>
                     )}
                   </TabsContent>
+
 
                   <TabsContent value="evaluation" className="space-y-4 mt-4">
                     {candidate.Strengths && (
@@ -705,10 +727,12 @@ export function CandidateDetailSidebar({
                       <CardContent className="p-6">
                         {campaignName ? (
                           <CandidateDecisionSidebarContent
+                            ref={decisionRef}
                             campaignName={campaignName}
                             candidateEmail={candidate.Email}
                             candidateDetails={candidate}
                             onSuccess={handleDecisionSuccess}
+                            hideSubmit={true}
                           />
                         ) : (
                           <div className="text-center py-8 text-slate-400">
@@ -722,19 +746,29 @@ export function CandidateDetailSidebar({
                 </Tabs>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 sticky bottom-0 bg-gradient-to-t from-slate-900 to-transparent pt-4">
+                <div className="flex gap-3 sticky bottom-0 bg-slate-900 pt-4 pb-2 mt-auto">
                   <Button
-                    variant="outline"
-                    onClick={handleFlagForReview}
-                    className="flex-1 gap-2 bg-slate-800/50 border-slate-700/50 hover:bg-slate-800"
+                    onClick={() => {
+                      if (activeTab !== "decision") {
+                        setActiveTab("decision")
+                        toast({
+                          title: "Decision Required",
+                          description: "Switched to Decision tab. Please review and click Save again to confirm.",
+                        })
+                      } else {
+                        decisionRef.current?.submit()
+                      }
+                    }}
+                    className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
                   >
-                    <Flag className="size-4" />
-                    Flag for Review
+                    <Save className="size-4" />
+                    Save Decision
                   </Button>
-                  <Button onClick={onClose} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                  <Button variant="ghost" onClick={onClose} className="flex-1 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/50">
                     Close
                   </Button>
                 </div>
+                </div> {/* end p-6 inner scroll body */}
               </div>
             )}
           </motion.div>

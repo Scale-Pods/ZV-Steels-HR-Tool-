@@ -229,7 +229,32 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }
 
-      const rawData = await response.json()
+      const responseText = await response.text()
+      if (!responseText || responseText.trim() === "") {
+        console.log("[v0] Empty response from webhook (candidates likely still processing).")
+        setAnalytics({
+          totalCandidates: 0,
+          avgScore: "0.00",
+          medianScore: "0.00",
+          tiAvgScore: "0.00",
+          passRate: "0.00",
+          failRate: "0.00",
+          holdRate: "0.00",
+          tiConversionRate: "0.00",
+          scoreStdDeviation: "0.00",
+          avgScoreYes: "0.00",
+          avgScoreNo: "0.00",
+          decisionEffectivenessIndex: "0.00",
+          candidateList: [],
+          topHRs: [],
+          avgScorePerHR: {},
+          avgScoreByCity: {},
+        })
+        setLoading(false)
+        return
+      }
+
+      const rawData = JSON.parse(responseText)
       console.log("[v0] Raw webhook response:", JSON.stringify(rawData).substring(0, 500))
 
       const normalizeDecision = (val: any): string => {
@@ -452,7 +477,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     } catch (error: any) {
       console.error("[v0] Error fetching campaign data:", error)
       toast.error("Error Loading Data", {
-        description: "Failed to load campaign analytics. Please try again.",
+        description: error.message || "Failed to load campaign analytics. Please try again.",
       })
     } finally {
       setLoading(false)
@@ -625,15 +650,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         City: candidate.City,
         Score: candidate.Score,
         HR: candidate.HR,
-        ResumeLink: candidate.ResumeLink,
-        PhoneNumber: candidate.PhoneNumber,
-        Experience: candidate.Experience,
-        RoleApplied: candidate.RoleApplied,
-        ResumeSummary: candidate.ResumeSummary,
-        Strengths: candidate.Strengths,
-        Gaps: candidate.Gaps,
-        FitAnalysis: candidate.FitAnalysis,
-        Comments: candidate.Comments,
+        "HR Comments": (candidate as any)["HR Comments"],
+        "Tech Comments": (candidate as any)["Tech Comments"],
       }
 
       const queryString = queryParams.toString().replace(/\+/g, '%20')
@@ -1033,15 +1051,15 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-800/50 hover:bg-slate-800/50 border-slate-700/50">
-                        <TableHead className="text-slate-300 font-semibold min-w-[180px]">Candidate</TableHead>
-                        <TableHead className="text-slate-300 font-semibold min-w-[120px]">Contact</TableHead>
-                        <TableHead className="text-slate-300 font-semibold min-w-[200px]">Key Insights</TableHead>
-                        <TableHead className="text-slate-300 font-semibold text-center min-w-[80px]">Score</TableHead>
-                        <TableHead className="text-emerald-400/80 font-semibold text-center min-w-[100px]">Resume</TableHead>
-                        <TableHead className="text-cyan-400/80 font-semibold text-center min-w-[100px]">Call</TableHead>
-                        <TableHead className="text-blue-400/80 font-semibold text-center min-w-[100px]">HR Round</TableHead>
-                        <TableHead className="text-amber-400/80 font-semibold text-center min-w-[100px]">Tech</TableHead>
-                        <TableHead className="text-violet-400/80 font-semibold text-center min-w-[100px]">Final</TableHead>
+                        <TableHead className="text-slate-300 font-semibold px-2 w-[140px]">Candidate</TableHead>
+                        <TableHead className="text-slate-300 font-semibold px-2 w-[120px]">Contact</TableHead>
+                        <TableHead className="text-slate-300 font-semibold px-2 flex-grow min-w-[150px]">Key Insights</TableHead>
+                        <TableHead className="text-slate-300 font-semibold text-center px-1 w-[60px]">Score</TableHead>
+                        <TableHead className="text-emerald-400/80 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
+                        <TableHead className="text-cyan-400/80 font-semibold text-center px-1 w-[80px]">Call</TableHead>
+                        <TableHead className="text-blue-400/80 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
+                        <TableHead className="text-amber-400/80 font-semibold text-center px-1 w-[80px]">Tech</TableHead>
+                        <TableHead className="text-violet-400/80 font-semibold text-center px-1 w-[80px]">Final</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1066,7 +1084,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             className="border-slate-800/50 hover:bg-slate-800/30 cursor-pointer transition-colors"
                             onClick={() => handleCandidateClick(candidate)}
                           >
-                            <TableCell className="font-medium">
+                            <TableCell className="font-medium px-2">
                               <div className="flex items-center gap-2">
                                 <div className="size-8 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                                   {displayName.charAt(0).toUpperCase()}
@@ -1077,9 +1095,9 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="px-2">
                               <div className="space-y-1">
-                                <p className="text-xs text-slate-400 truncate">{candidate.Email}</p>
+                                <p className="text-xs text-slate-400 truncate max-w-[150px]">{candidate.Email}</p>
                                 {candidate.PhoneNumber && (
                                   <p className="text-xs text-slate-500 flex items-center gap-1">
                                     <Phone className="size-3" />
@@ -1088,9 +1106,9 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="px-2 w-[25%] max-w-[200px]">
                               {hasInsights ? (
-                                <div className="text-xs text-slate-400 leading-relaxed">
+                                <div className="text-xs text-slate-400 leading-relaxed line-clamp-2" title={insightPreview || ""}>
                                   {insightPreview || (
                                     <span className="text-slate-500 italic">Click to view insights</span>
                                   )}
@@ -1099,40 +1117,40 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 <span className="text-xs text-slate-600 italic">No insights available</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <span className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="ResumeScreening" 
                                 value={candidate.ResumeScreening} 
                               />
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="CallRound" 
                                 value={candidate.CallRound} 
                               />
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="HRRound" 
                                 value={candidate.HRRound} 
                               />
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="TechInterviewRound" 
                                 value={candidate.TechInterviewRound} 
                               />
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="ManagerInterview" 

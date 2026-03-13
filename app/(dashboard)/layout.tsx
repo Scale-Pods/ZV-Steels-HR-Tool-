@@ -20,7 +20,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
-import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as CalendarIcon } from "lucide-react"
+import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as CalendarIcon, PhoneCall } from "lucide-react"
 import { useState, useEffect, ReactNode } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -28,6 +28,8 @@ import { Toaster } from "sonner"
 import { cn } from "@/lib/utils"
 import { ReportIssueModal } from "@/components/campaigns/report-issue-modal"
 import { PageTransition } from "@/components/animations/page-transition"
+import { useAuth } from "@/context/auth-context"
+import { useRouter } from "next/navigation"
 
 function NavItems() {
   const pathname = usePathname()
@@ -50,11 +52,17 @@ function NavItems() {
       icon: <CalendarIcon className="size-6" />,
       description: "Interview Schedule",
     },
+    {
+      href: "/call-analysis",
+      label: "Call Analysis",
+      icon: <PhoneCall className="size-6" />,
+      description: "Automated Call Results",
+    },
   ]
 
   return (
     <>
-      <SidebarMenu className="gap-3 px-3">
+      <SidebarMenu className="gap-2.5 px-2">
         {items.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} className="w-full">
@@ -62,26 +70,29 @@ function NavItems() {
                 asChild
                 isActive={pathname === item.href}
                 className={cn(
-                  "w-full h-auto py-4 px-5 rounded-xl transition-all duration-200",
+                  "w-full h-auto py-3.5 px-4 rounded-xl transition-all duration-200",
+                  "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:py-3",
                   pathname === item.href
                     ? "bg-muted/50 text-foreground"
-                    : "hover:bg-muted/20 text-muted-foreground hover:text-foreground",
+                    : "hover:bg-muted/30 text-foreground/70 hover:text-foreground",
                 )}
               >
-                <span className="flex items-center gap-4 w-full">
+                <span className="flex items-center gap-4 w-full group-data-[state=collapsed]:justify-center">
                   <span
                     className={cn(
                       "transition-colors shrink-0",
-                      pathname === item.href ? "text-primary" : "text-muted-foreground",
+                      pathname === item.href
+                        ? "text-primary"
+                        : "text-foreground/60 group-hover:text-foreground",
                     )}
                   >
                     {item.icon}
                   </span>
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden group-data-[state=collapsed]:hidden">
                     <div className="font-semibold text-[15px] leading-tight truncate">
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-medium group-data-[state=collapsed]:hidden opacity-60 mt-0.5 truncate uppercase tracking-wider">
+                    <div className="text-[11px] text-muted-foreground font-medium opacity-60 mt-0.5 truncate uppercase tracking-wider">
                       {item.description}
                     </div>
                   </div>
@@ -96,6 +107,8 @@ function NavItems() {
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const pathname = usePathname()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -103,6 +116,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/sign-in")
+    }
+  }, [user, loading, router])
+
+  if (loading || (!user && mounted)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground font-medium animate-pulse">Verifying Session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user && mounted) return null
 
   return (
     <SidebarProvider
@@ -115,33 +147,36 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     >
       {mounted && <Toaster position="top-right" closeButton richColors />}
       <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
-        <SidebarHeader className="py-8 px-6">
-          <Link href="/" className="flex flex-col items-center gap-6 hover:opacity-90 transition-opacity">
-            <div className="relative h-16 w-32 shrink-0 group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10">
-              <Image
-                src="https://zvsteels.com/assets/img/zv_logo.png"
-                alt="ZV Steels Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-1">
-              <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-3 opacity-60">
-                Management System
+        <SidebarHeader className="py-6 px-4 group-data-[state=collapsed]:px-0 overflow-hidden">
+          <Link href="/" className="flex items-center group-data-[state=collapsed]:justify-center gap-2.5 hover:opacity-90 transition-opacity">
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <div className="relative h-9 w-20 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-10 transition-all">
+                <Image
+                  src="https://zvsteels.com/assets/img/zv_logo.png"
+                  alt="ZV Steels Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <span className="text-[7px] font-bold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap group-data-[state=collapsed]:hidden">
+                ZV Steels Pvt. Ltd.
               </span>
-              <div className="flex flex-col items-center justify-center border-t border-border/10 pt-4 w-[80%]">
-                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 leading-none mb-0.5 text-center">
-                  Powered By
-                </span>
-                <div className="relative h-10 w-32">
-                  <Image
-                    src="/images/scalepods-logo.avif"
-                    alt="Scalepods Logo"
-                    fill
-                    className="object-contain invert dark:invert-0 scale-[1.3]"
-                  />
-                </div>
+            </div>
+
+            <div className="h-8 w-px bg-border/20 group-data-[state=collapsed]:hidden" />
+
+            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-0.5 min-w-0">
+              <span className="text-[6px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 leading-none text-center">
+                Powered By
+              </span>
+              <div className="relative h-7 w-20">
+                <Image
+                  src="/images/scalepods-logo.avif"
+                  alt="Scalepods Logo"
+                  fill
+                  className="object-contain invert dark:invert-0 scale-[1.1]"
+                />
               </div>
             </div>
           </Link>
@@ -149,7 +184,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         <SidebarSeparator className="bg-border/10" />
 
-        <SidebarContent className="py-2">
+        <SidebarContent className="py-4">
           <SidebarGroup>
             <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/30 px-6 py-4 font-bold">
               Navigation

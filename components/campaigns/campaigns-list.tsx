@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react"
+import { useAuth } from "@/context/auth-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -39,6 +40,7 @@ export interface CampaignsListRef {
 }
 
 export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList(_props, ref) {
+  const { user } = useAuth()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +60,7 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          UserEmail: "guest@example.com"
+          UserEmail: user?.email || "guest@example.com"
         })
       })
       if (!response.ok) throw new Error("Failed to fetch campaigns")
