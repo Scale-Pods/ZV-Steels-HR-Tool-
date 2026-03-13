@@ -295,8 +295,8 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       console.log("[Reschedule] Parsed Response Data:", data)
 
       if (res.ok) {
-        if (data.status === "booked" || data.status === "unavailable") {
-          console.log("[Reschedule] Slot unavailable detected:", data.status)
+        if (data.status === "unavailable") {
+          console.log("[Reschedule] Slot unavailable detected")
           toast({ 
             title: "Slot Unavailable", 
             description: data.message || "The selected time slot is already booked. Please choose another.",
@@ -305,10 +305,11 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
           return
         }
         
+        // "booked" = successfully rescheduled
         console.log("[Reschedule] Success toast triggered")
         toast({ 
-          title: "Reschedule Success", 
-          description: data.message || `Reschedule request sent for ${meetingType.toUpperCase()} round.` 
+          title: "Meeting Rescheduled ✓", 
+          description: data.message || `${meetingType?.toUpperCase()} round successfully rescheduled. Confirmation email sent to the candidate.`
         })
         setRescheduleDialog(prev => ({ ...prev, isOpen: false }))
       } else {

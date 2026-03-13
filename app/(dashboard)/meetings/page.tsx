@@ -186,8 +186,8 @@ export default function MeetingsPage() {
       console.log("[Reschedule] Parsed Response Data:", data)
 
       if (res.ok) {
-        if (data.status === "booked" || data.status === "unavailable") {
-          console.log("[Reschedule] Slot unavailable detected:", data.status)
+        if (data.status === "unavailable") {
+          console.log("[Reschedule] Slot unavailable detected")
           toast({ 
             title: "Slot Unavailable", 
             description: data.message || "The selected time slot is already booked. Please choose another.",
@@ -195,8 +195,9 @@ export default function MeetingsPage() {
           })
           return
         }
+        // "booked" = successfully rescheduled
         console.log("[Reschedule] Success toast triggered")
-        toast({ title: "Reschedule Success", description: data.message || `Sent postpone/prepone request for ${mtg.candidate.name}` })
+        toast({ title: "Meeting Rescheduled ✓", description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Confirmation email sent.` })
         setRescheduleData(prev => ({ ...prev, isOpen: false }))
       } else {
         console.error("[Reschedule] Webhook error status:", res.status)
