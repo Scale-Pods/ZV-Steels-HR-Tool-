@@ -297,6 +297,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         Comments:     c["HR Comments"] || c.Comments || c.comments || "",
         AppBooked:    c.AppBooked || c.appBooked || "",
         TIAssigned:   c["Tech Interviewer"] || c.TIAssigned || c.tiAssigned || "",
+        ManagerAssigned: c["Manager Assigned"] || c.ManagerAssigned || c.managerAssigned || "",
         
         // HR Meeting Details
         HRMeetingDate: c["HR Meeting Date"] || c.HRMeetingDate || "",

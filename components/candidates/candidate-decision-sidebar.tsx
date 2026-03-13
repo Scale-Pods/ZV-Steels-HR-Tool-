@@ -1570,7 +1570,7 @@ function StructuredValue({
                                 className="flex-1 border-violet-500/40 text-violet-400 hover:bg-violet-500/10 text-xs font-bold gap-2"
                                 onClick={() => openReschedule(
                                   "manager",
-                                  candidateDetails["Manager Assigned"] || candidateDetails.HR || "",
+                                  candidateDetails.ManagerAssigned || candidateDetails.HR || "",
                                   candidateDetails.ManagerEventID || ""
                                 )}
                               >
