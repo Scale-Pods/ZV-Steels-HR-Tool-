@@ -187,7 +187,6 @@ export default function MeetingsPage() {
 
       if (res.ok) {
         if (data.status === "unavailable") {
-          console.log("[Reschedule] Slot unavailable detected")
           toast({ 
             title: "Slot Unavailable", 
             description: data.message || "The selected time slot is already booked. Please choose another.",
@@ -195,13 +194,18 @@ export default function MeetingsPage() {
           })
           return
         }
-        // "booked" = successfully rescheduled
-        console.log("[Reschedule] Success toast triggered")
-        toast({ title: "Meeting Rescheduled ✓", description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Confirmation email sent.` })
-        setRescheduleData(prev => ({ ...prev, isOpen: false }))
+        
+        // Handle "Booking Confirmed" (new), "booked" (old), or any successful 200 response
+        const isSuccess = data.status === "Booking Confirmed" || data.status === "booked" || res.status === 200
+        
+        if (isSuccess) {
+          toast({ title: "Meeting Rescheduled ✓", description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Confirmation email sent.` })
+          setRescheduleData(prev => ({ ...prev, isOpen: false }))
+        } else {
+          throw new Error(data.message || "Meeting request sent, but confirmation was not received. Please check your calendar.")
+        }
       } else {
-        console.error("[Reschedule] Webhook error status:", res.status)
-        throw new Error(data.message || `Failed to send webhook: ${res.status}`)
+        throw new Error(`Server returned error status: ${res.status}`)
       }
     } catch (e: any) {
       console.error("[Reschedule] Catch block error:", e)
