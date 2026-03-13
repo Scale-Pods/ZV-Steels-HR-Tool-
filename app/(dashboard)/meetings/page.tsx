@@ -257,9 +257,9 @@ export default function MeetingsPage() {
     hrMeetingType:      c["HR Meeting Type"] || c.HRMeetingType || c.hrMeetingType || "",
     techMeetingType:    c["Tech Meeting Type"] || c.TechMeetingType || c.techMeetingType || "",
     managerMeetingType: c["Manager Meeting Type"] || c.ManagerMeetingType || c.managerMeetingType || "",
-    hr: c.HR || c.hr || "",
-    tiAssigned: c.TIAssigned || c.tiAssigned || "",
-    managerAssigned: c["Manager Assigned"] || c.managerAssigned || "",
+    hr: c["HR Assigned"] || c.HR || c.hr || "",
+    tiAssigned: c["Tech Interviewer"] || c.TIAssigned || c.tiAssigned || "",
+    managerAssigned: c["Manager Assigned"] || c.ManagerAssigned || c.managerAssigned || "",
   })
 
   const fetchCandidates = async (campaignName: string) => {
