@@ -1,6 +1,6 @@
 import Link from "next/link"
+import Image from "next/image"
 import { SignInForm } from "@/components/auth/sign-in-form"
-import { GoogleOAuthButton } from "@/components/auth/oauth-buttons"
 
 export const dynamic = "force-dynamic"
 
@@ -12,31 +12,18 @@ export default function SignInPage() {
         <div className="absolute inset-0 bg-[url('/office-team-collaboration.png')] bg-cover bg-center opacity-20" />
         <div className="absolute inset-0 bg-linear-to-t from-slate-900 via-slate-900/80 to-transparent" />
 
-        <div className="relative z-10 max-w-lg space-y-8">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex items-center justify-center size-12 rounded-xl bg-primary">
-              <span className="text-2xl font-bold text-primary-foreground">H</span>
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+          <Link href="/" className="flex flex-col items-center justify-center gap-3 hover:opacity-80 transition-opacity mt-[-10vh]">
+            <div className="relative h-32 w-64 max-w-full">
+              <Image
+                src="https://zvsteels.com/assets/img/zv_logo.png"
+                alt="ZV Steels Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="text-2xl font-bold text-white">HR Pipeline</span>
           </Link>
-
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-white leading-tight">Transform Your Recruitment</h1>
-            <p className="text-lg text-slate-300 leading-relaxed">
-              "This HR platform streamlined our hiring process and saved us countless hours. The analytics and
-              automation features are game-changing."
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 pt-8 border-t border-slate-700">
-            <div className="size-12 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center text-white font-semibold">
-              KW
-            </div>
-            <div>
-              <p className="font-semibold text-white">Katie Waters</p>
-              <p className="text-sm text-slate-400">Head of HR, TechCorp</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -63,28 +50,6 @@ export default function SignInPage() {
 
           <div className="mt-8 space-y-6">
             <SignInForm />
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <GoogleOAuthButton />
-          </div>
-
-          <div className="mt-8 text-center text-sm">
-            <p className="text-muted-foreground">
-              Don't have an account?{" "}
-              <Link href="/sign-up" className="text-primary hover:underline font-medium">
-                Sign up
-              </Link>
-            </p>
           </div>
         </div>
       </div>

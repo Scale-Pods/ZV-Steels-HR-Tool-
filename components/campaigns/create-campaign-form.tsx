@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Loader2, CalendarIcon, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -28,6 +35,13 @@ const WEBHOOK_URL = "https://n8n.srv1010832.hstgr.cloud/webhook/ff7710c6-14c7-4c
 
 interface CreateCampaignFormProps {
   onSuccess?: () => void
+}
+
+interface Interviewer {
+  name: string
+  email: string
+  type: string
+  calendarLink: string
 }
 
 export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
@@ -52,6 +66,45 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
   const [alignmentWeight, setAlignmentWeight] = useState(25)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [interviewers, setInterviewers] = useState<Interviewer[]>([])
+  const [loadingInterviewers, setLoadingInterviewers] = useState(false)
+
+  // ── Effects ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchInterviewers = async () => {
+      setLoadingInterviewers(true)
+      try {
+        const response = await fetch("/api/webhook-proxy?action=InterviewerListing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "InterviewerListing" })
+        })
+        if (response.ok) {
+          const data = await response.json()
+          let rawRows: any[] = []
+          if (Array.isArray(data)) rawRows = data
+          else if (data.data && Array.isArray(data.data)) rawRows = data.data
+          else if (data.interviewers && Array.isArray(data.interviewers)) rawRows = data.interviewers
+          
+          const extracted: Interviewer[] = rawRows.map((row: any) => {
+            const item = row.json || row
+            return {
+              name: String(item.Name || item.name || "Unknown"),
+              email: String(item.Email || item.email || ""),
+              type: String(item.Interviewer || item.type || ""),
+              calendarLink: String(item["Calendar Link"] || item.calendarLink || item.calendar_link || ""),
+            }
+          })
+          setInterviewers(extracted)
+        }
+      } catch (error) {
+        console.error("[CreateCampaignForm] Error fetching interviewers:", error)
+      } finally {
+        setLoadingInterviewers(false)
+      }
+    }
+    fetchInterviewers()
+  }, [])
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const handleNumberOfRoundsChange = (value: string) => {
@@ -84,6 +137,14 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     const next = [...pocCalendarLinks]
     next[index] = value
     setPocCalendarLinks(next)
+  }
+
+  const handleInterviewerSelect = (index: number, interviewerName: string) => {
+    const selected = interviewers.find(i => i.name === interviewerName)
+    if (selected) {
+      handlePocEmailChange(index, selected.email)
+      handlePocCalendarLinkChange(index, selected.calendarLink)
+    }
   }
 
   const areAllPocEmailsValid = () => {
@@ -390,7 +451,25 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
               <div key={i} className="space-y-3 p-4 border border-border/50 rounded-lg bg-background/30 relative">
                 <div className="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-lg opacity-50"></div>
                 <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest pl-2">Round {i + 1}</p>
-                <div className="grid gap-4 md:grid-cols-2 pl-2">
+                <div className="grid gap-4 md:grid-cols-3 pl-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Select Interviewer</Label>
+                    <Select 
+                      onValueChange={(val) => handleInterviewerSelect(i, val)}
+                      disabled={isSubmitting || loadingInterviewers}
+                    >
+                      <SelectTrigger className="bg-background/50 h-9">
+                        <SelectValue placeholder={loadingInterviewers ? "Loading..." : "Choose interviewer"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {interviewers.map((int, idx) => (
+                          <SelectItem key={idx} value={int.name}>
+                            {int.name} ({int.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-1.5">
                     <Label htmlFor={`poc-email-${i}`} className="text-sm font-medium">Email *</Label>
                     <Input
@@ -400,7 +479,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
                       value={pocEmails[i] ?? ""}
                       onChange={(e) => handlePocEmailChange(i, e.target.value)}
                       disabled={isSubmitting}
-                      className="bg-background/50"
+                      className="bg-background/50 h-9"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -412,7 +491,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
                       value={pocCalendarLinks[i] ?? ""}
                       onChange={(e) => handlePocCalendarLinkChange(i, e.target.value)}
                       disabled={isSubmitting}
-                      className="bg-background/50"
+                      className="bg-background/50 h-9"
                     />
                   </div>
                 </div>

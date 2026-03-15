@@ -22,11 +22,13 @@ const WEBHOOK_MAP: Record<string, string> = {
   "Report":            `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`,
   "UpdateDecision":    `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_UPDATE_DECISION || "4e32ea2c-cec1-4357-bd2c-e635fa910444"}`,
   "CallRoundData":     `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_UPDATE_DECISION || "4e32ea2c-cec1-4357-bd2c-e635fa910444"}`,
+  "Interviewer":       `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGN_CREATION || "ff7710c6-14c7-4cae-a24c-6c53e5f09497"}`,
+  "InterviewerListing": `${WEBHOOK_BASE}/${process.env.NEXT_PUBLIC_WEBHOOK_CAMPAIGNS || "ab8d28de-afb7-416f-aaf1-454949b27c18"}`,
 }
 
 // These actions are read-only fetches — forward them as GET to n8n
 // (n8n webhook triggers are GET-first by default unless configured otherwise)
-const GET_ACTIONS = new Set(["Campaigns", "Certain Campaign", "AllCampaign"])
+const GET_ACTIONS = new Set(["Campaigns", "Certain Campaign", "AllCampaign", "InterviewerListing"])
 
 export async function POST(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
   let targetUrl: string
   if (isGetAction) {
     const params = new URLSearchParams(searchParams)
-    Object.entries(body).forEach(([k, v]) => params.append(k, String(v)))
+    Object.entries(body).forEach(([k, v]) => params.set(k, String(v)))
     targetUrl = `${targetBase}?${params.toString().replace(/\+/g, '%20')}`
   } else {
     // For POST, just forward existing search params

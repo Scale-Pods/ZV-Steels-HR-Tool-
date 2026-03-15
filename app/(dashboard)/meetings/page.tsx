@@ -166,11 +166,16 @@ export default function MeetingsPage() {
         userRole: userRole
       })
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       const res = await fetch(`${WEBHOOK_BASE}?${params.toString()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({ ...payload, userRole })
       })
+      clearTimeout(timeoutId)
 
       const text = await res.text()
       console.log("[Reschedule] Webhook Response Text:", text)
@@ -209,9 +214,14 @@ export default function MeetingsPage() {
       }
     } catch (e: any) {
       console.error("[Reschedule] Catch block error:", e)
+      
+      const isTimeout = e.name === "AbortError"
+      
       toast({ 
-        title: "Reschedule Failed", 
-        description: e.message || "An unexpected error occurred while rescheduling.", 
+        title: isTimeout ? "Request Path Timeout" : "Reschedule Failed", 
+        description: isTimeout 
+          ? "The automation server is taking too long to respond. This usually means a branch in n8n is not connected to a response node. Please check your workflow." 
+          : (e.message || "An unexpected error occurred while rescheduling."), 
         variant: "destructive" 
       })
     } finally {

@@ -280,11 +280,23 @@ export default function DashboardPage() {
         })
       }
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`)
+      const responseText = await response.text()
+      let rawData: any = {}
+      try {
+        rawData = JSON.parse(responseText)
+      } catch (e) {
+        console.warn("[dashboard] Failed to parse JSON response")
       }
 
-      const rawData = await response.json()
+      if (!response.ok) {
+        if (response.status === 500 && responseText.includes("No item to return was found")) {
+          console.log("[dashboard] n8n returned no items, treating as empty state")
+          rawData = { data: [] }
+        } else {
+          throw new Error(`API returned ${response.status}: ${responseText.substring(0, 100)}`)
+        }
+      }
+
       console.log("[dashboard] Received raw data:", rawData)
 
       // Normalize rawData to handle various envelope shapes
@@ -320,7 +332,7 @@ export default function DashboardPage() {
           hr: String(c.hr || c["HR Assigned"] || c.hr_assigned || "Unassigned"),
           resumeDecision: String(c["Resume Decision"] || c.resume_decision || c["Resume Screening"] || c.resume_screening || c.decision || c.Decision || "Pending"),
           callDecision: String(c["Call Decision"] || c.call_decision || c["Call Round"] || c.call_round || c["Call Status"] || c.call_status || "Pending"),
-          hrDecision: String(c["HR Decision"] || c.hr_decision || c["HR Round"] || c.hr_round || (c["HR Assigned"] ? "Yes" : "Pending")),
+          hrDecision: String(c["HR Decision"] || c.hr_decision || c["HR Round"] || c.hr_round || "Pending"),
           techDecision: String(c["Tech Decision"] || c.tech_decision || c["Tech Interview"] || c.tech_interview || c.technicalInterview || c["Technical Interview"] || "Pending"),
           managerDecision: String(c["Manager Decision"] || c.manager_decision || c["Final Decision"] || c["Manager Interview"] || c.ManagerInterview || c.final_decision || "Pending"),
           comments: String(c.comments || c.Comments || ""),

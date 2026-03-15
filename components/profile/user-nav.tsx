@@ -11,13 +11,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LogOut } from "lucide-react"
+import { LogOut, Users } from "lucide-react"
 
 import { useState, useEffect } from "react"
+import { InterviewersListModal } from "./interviewers-list-modal"
 
 export function UserNav() {
   const { user, logout } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const [showInterviewers, setShowInterviewers] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -54,6 +56,14 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
+          onClick={() => setShowInterviewers(true)}
+          className="focus:bg-primary/10 cursor-pointer"
+        >
+          <Users className="mr-2 h-4 w-4" />
+          <span className="font-bold">Interviewers</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
           onClick={() => logout()}
           className="text-destructive focus:bg-destructive/10 dark:focus:bg-destructive/20 focus:text-destructive cursor-pointer"
         >
@@ -61,6 +71,10 @@ export function UserNav() {
           <span className="font-bold">Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <InterviewersListModal 
+        open={showInterviewers} 
+        onOpenChange={setShowInterviewers} 
+      />
     </DropdownMenu>
   )
 }

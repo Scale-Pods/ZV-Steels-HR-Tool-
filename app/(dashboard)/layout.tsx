@@ -147,10 +147,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     >
       {mounted && <Toaster position="top-right" closeButton richColors />}
       <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
-        <SidebarHeader className="py-6 px-4 group-data-[state=collapsed]:px-0 overflow-hidden">
-          <Link href="/" className="flex items-center group-data-[state=collapsed]:justify-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className="relative h-9 w-20 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-10 transition-all">
+        <SidebarHeader className="py-8 px-4 group-data-[state=collapsed]:px-0 overflow-hidden">
+          <Link href="/" className="flex flex-col items-center justify-center gap-4 hover:opacity-90 transition-opacity">
+            {/* ZV Steels Logo - Centered & Bigger */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="relative h-20 w-40 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-10 transition-all">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -159,23 +160,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   priority
                 />
               </div>
-              <span className="text-[7px] font-bold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap group-data-[state=collapsed]:hidden">
+              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 whitespace-nowrap group-data-[state=collapsed]:hidden">
                 ZV Steels Pvt. Ltd.
               </span>
             </div>
 
-            <div className="h-8 w-px bg-border/20 group-data-[state=collapsed]:hidden" />
-
-            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-0.5 min-w-0">
-              <span className="text-[6px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 leading-none text-center">
-                Powered By
-              </span>
-              <div className="relative h-7 w-20">
+            {/* Powered By & ScalePods - Centered & Bigger */}
+            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3 w-full opacity-60">
+                <div className="h-px w-8 bg-border/30" />
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground/30 leading-none text-center">
+                  Powered By
+                </span>
+                <div className="h-px w-8 bg-border/30" />
+              </div>
+              
+              <div className="relative h-14 w-44">
                 <Image
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"
                   fill
-                  className="object-contain invert dark:invert-0 scale-[1.1]"
+                  className="object-contain invert dark:invert-0"
                 />
               </div>
             </div>

@@ -6,6 +6,7 @@ import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/auth-context"
 import NextTopLoader from "nextjs-toploader"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 // Initialize fonts
@@ -43,6 +44,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+            <Toaster />
             <Analytics />
           </AuthProvider>
         </ThemeProvider>

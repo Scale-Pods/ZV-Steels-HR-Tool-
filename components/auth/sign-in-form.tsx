@@ -78,12 +78,6 @@ export function SignInForm() {
             <FormItem>
               <div className="flex items-center justify-between">
                 <FormLabel>Password</FormLabel>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:underline hover:text-primary/90"
-                >
-                  Forgot password?
-                </Link>
               </div>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
