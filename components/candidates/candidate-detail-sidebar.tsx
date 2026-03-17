@@ -16,6 +16,10 @@ import {
   AlertCircle,
   CheckCircle,
   Save,
+  Target,
+  MessageSquare,
+  DollarSign,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -58,6 +62,14 @@ export interface Candidate {
   ManagerMeetingTime?: string
   ManagerMeetingLink?: string
   ManagerEventID?: string
+
+  "Call Logs"?: string
+  CallLogs?: string
+  call_logs?: string
+  Data?: string
+  data?: string
+  call_recording?: string
+  CallRecording?: string
 
   // Followup Stages
   Call1?: string
@@ -271,6 +283,68 @@ export function CandidateDetailSidebar({
       onClose()
     }, 2000)
   }
+
+  const parseCallLogs = (raw: any): Record<string, string> => {
+    const LABEL_TO_KEY: Record<string, string> = {
+      "experience": "experience",
+      "responsibility fit": "responsibilityfit",
+      "responsibilityfit": "responsibilityfit",
+      "location": "location",
+      "targets": "targets",
+      "notice period": "noticeperiod",
+      "noticeperiod": "noticeperiod",
+      "availability": "availability",
+      "salary": "salary",
+      "salary expectation": "salary",
+      "interview": "interview"
+    }
+
+    const result: Record<string, string> = {}
+    if (!raw) return result
+    const str = String(raw)
+
+    const lines = str.split("\n")
+    for (const line of lines) {
+      const colonIndex = line.indexOf(":")
+      if (colonIndex > 0) {
+        const rawLabel = line.slice(0, colonIndex).trim().toLowerCase()
+        const content = line.slice(colonIndex + 1).trim()
+        const internalKey = LABEL_TO_KEY[rawLabel]
+        if (internalKey && content) {
+          result[internalKey] = content
+        }
+      }
+    }
+
+    if (Object.keys(result).length === 0) {
+      const labelsPattern = Object.keys(LABEL_TO_KEY).join("|")
+      const regex = new RegExp(`(${labelsPattern})\\s*:\\s*([^\\n]+)`, "gi")
+      let match
+      while ((match = regex.exec(str)) !== null) {
+        const internalKey = LABEL_TO_KEY[match[1].toLowerCase()]
+        if (internalKey) result[internalKey] = match[2].trim()
+      }
+    }
+
+    return result
+  }
+
+  const METRIC_COLUMNS = [
+    { key: "experience",        label: "Experience",         icon: Briefcase },
+    { key: "responsibilityfit", label: "Responsibility Fit", icon: CheckCircle },
+    { key: "location",          label: "Location",           icon: MapPin },
+    { key: "targets",           label: "Targets",            icon: Target },
+    { key: "noticeperiod",      label: "Notice Period",      icon: Clock },
+    { key: "availability",      label: "Availability",       icon: Clock },
+    { key: "salary",            label: "Salary",             icon: DollarSign },
+    { key: "interview",         label: "Interview",          icon: MessageSquare }
+  ]
+
+  const callMetrics = useMemo(() => {
+    if (!candidate) return {}
+    const rawText = candidate["Call Logs"] || candidate.CallLogs || candidate.call_logs || candidate.Data || candidate.data || ""
+    return parseCallLogs(rawText)
+  }, [candidate])
 
   return (
     <AnimatePresence>
@@ -546,9 +620,12 @@ export function CandidateDetailSidebar({
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 bg-slate-800/50 border border-slate-700/50">
+                  <TabsList className="grid w-full grid-cols-5 bg-slate-800/50 border border-slate-700/50">
                     <TabsTrigger value="profile" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Profile
+                    </TabsTrigger>
+                    <TabsTrigger value="call-logs" className="data-[state=active]:bg-emerald-600 text-xs text-white">
+                      Call Logs
                     </TabsTrigger>
                     <TabsTrigger value="evaluation" className="data-[state=active]:bg-emerald-600 text-xs text-white">
                       Evaluation
@@ -623,6 +700,34 @@ export function CandidateDetailSidebar({
                       </Card>
                     )}
                   </TabsContent>
+                    <TabsContent value="call-logs" className="space-y-4 mt-4">
+                      {Object.keys(callMetrics).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {METRIC_COLUMNS.map((col) => {
+                            const val = callMetrics[col.key]
+                            if (!val) return null
+                            return (
+                              <Card key={col.key} className="bg-slate-800/50 border-slate-700/50">
+                                <CardContent className="p-4 space-y-2">
+                                  <div className="flex items-center gap-2 text-slate-400">
+                                    <col.icon className="size-4 text-emerald-400" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider">{col.label}</span>
+                                  </div>
+                                  <p className="text-sm text-white font-medium">{val}</p>
+                                </CardContent>
+                              </Card>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <Card className="bg-slate-800/50 border-slate-700/50">
+                          <CardContent className="p-8 text-center text-slate-500">
+                            <Phone className="size-8 mx-auto mb-3 opacity-20" />
+                            <p>No call logs available for this candidate.</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
 
 
                   <TabsContent value="evaluation" className="space-y-4 mt-4">

@@ -214,17 +214,6 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
         continue
       }
 
-      // Only support individual resume files inside the folder
-      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."))
-      const validExtensions = [".pdf", ".doc", ".docx", ".txt"]
-      if (!validExtensions.includes(ext)) {
-        toast({
-          title: "Invalid File Type",
-          description: `${file.name} is not supported. Please upload a folder containing resume files (.pdf, .doc, .docx, .txt).`,
-          variant: "destructive",
-        })
-        continue
-      }
 
       if (file.size > maxSize) {
         toast({
@@ -809,7 +798,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                   {isDragging ? "Ready to drop" : "Drop folder here"}
                 </p>
                 <p className="text-sm text-muted-foreground max-w-xs">
-                  Upload a folder containing candidate resumes to start analysis
+                  Upload a folder containing candidates (Resumes, Images, PDFs) to start analysis
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-4 relative mt-2">
