@@ -204,8 +204,16 @@ export default function MeetingsPage() {
         const isSuccess = data.status === "Booking Confirmed" || data.status === "booked" || res.status === 200
         
         if (isSuccess) {
-          toast({ title: "Meeting Rescheduled ✓", description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Confirmation email sent.` })
+          toast({ 
+            title: "Meeting Rescheduled ✓", 
+            description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Refreshing in 5s...` 
+          })
           setRescheduleData(prev => ({ ...prev, isOpen: false }))
+          
+          // Requested: fetch again after 5 secs to sync new data from automation
+          setTimeout(() => {
+            fetchCandidates(selectedCampaign)
+          }, 5000)
         } else {
           throw new Error(data.message || "Meeting request sent, but confirmation was not received. Please check your calendar.")
         }

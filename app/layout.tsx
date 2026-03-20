@@ -6,6 +6,7 @@ import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/auth-context"
 import NextTopLoader from "nextjs-toploader"
+import { Toaster as SonnerToaster } from "sonner"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
@@ -45,6 +46,7 @@ export default function RootLayout({
           <AuthProvider>
             <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
             <Toaster />
+            <SonnerToaster position="top-right" richColors closeButton />
             <Analytics />
           </AuthProvider>
         </ThemeProvider>

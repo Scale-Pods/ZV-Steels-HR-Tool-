@@ -49,7 +49,18 @@ export function SignInForm() {
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Sign in error:", error);
-      toast.error(error.message || "Invalid email or password.");
+      const errorCode = error.code;
+      let errorMessage = "Invalid email or password.";
+      
+      if (errorCode === "auth/user-not-found" || errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential") {
+        errorMessage = "Invalid email or password. Please try again.";
+      } else if (errorCode === "auth/too-many-requests") {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

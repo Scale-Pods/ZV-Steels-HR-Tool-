@@ -1032,10 +1032,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger className="w-full min-w-[140px] md:w-[180px] bg-slate-800/50 border-slate-700/50 text-white">
+                  <SelectTrigger className="w-full min-w-[140px] md:w-[180px] bg-muted/50 border-border text-foreground">
                     <SelectValue placeholder="Filter by decision" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Decisions</SelectItem>
                     <SelectItem value="yes">Approved</SelectItem>
                     <SelectItem value="no">Rejected</SelectItem>
@@ -1048,19 +1048,19 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
           <CardContent>
             {paginatedCandidates.length > 0 ? (
               <>
-                <div className="rounded-lg border border-slate-800/50 overflow-x-auto">
+                <div className="rounded-lg border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-800/50 hover:bg-slate-800/50 border-slate-700/50">
-                        <TableHead className="text-slate-300 font-semibold px-2 w-[140px]">Candidate</TableHead>
-                        <TableHead className="text-slate-300 font-semibold px-2 w-[120px]">Contact</TableHead>
-                        <TableHead className="text-slate-300 font-semibold px-2 flex-grow min-w-[150px]">Key Insights</TableHead>
-                        <TableHead className="text-slate-300 font-semibold text-center px-1 w-[60px]">Score</TableHead>
-                        <TableHead className="text-emerald-400/80 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
-                        <TableHead className="text-cyan-400/80 font-semibold text-center px-1 w-[80px]">Call</TableHead>
-                        <TableHead className="text-blue-400/80 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
-                        <TableHead className="text-amber-400/80 font-semibold text-center px-1 w-[80px]">Tech</TableHead>
-                        <TableHead className="text-violet-400/80 font-semibold text-center px-1 w-[80px]">Final</TableHead>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50 border-border">
+                        <TableHead className="text-muted-foreground font-semibold px-2 w-[140px]">Candidate</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-2 w-[120px]">Contact</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-2 flex-grow min-w-[150px]">Key Insights</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold text-center px-1 w-[60px]">Score</TableHead>
+                        <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
+                        <TableHead className="text-blue-500 font-semibold text-center px-1 w-[80px]">Call</TableHead>
+                        <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
+                        <TableHead className="text-amber-500 font-semibold text-center px-1 w-[80px]">Tech</TableHead>
+                        <TableHead className="text-violet-500 font-semibold text-center px-1 w-[80px]">Final</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1082,7 +1082,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         return (
                           <TableRow
                             key={candidate.CandidateID || index}
-                            className="border-slate-800/50 hover:bg-slate-800/30 cursor-pointer transition-colors"
+                            className="border-border hover:bg-muted transition-colors cursor-pointer"
                             onClick={() => handleCandidateClick(candidate)}
                           >
                             <TableCell className="font-medium px-2">
@@ -1098,7 +1098,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             </TableCell>
                             <TableCell className="px-2">
                               <div className="space-y-1">
-                                <p className="text-xs text-slate-400 truncate max-w-[150px]">{candidate.Email}</p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{candidate.Email}</p>
                                 {candidate.PhoneNumber && (
                                   <p className="text-xs text-slate-500 flex items-center gap-1">
                                     <Phone className="size-3" />
@@ -1109,13 +1109,13 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             </TableCell>
                             <TableCell className="px-2 w-[25%] max-w-[200px]">
                               {hasInsights ? (
-                                <div className="text-xs text-slate-400 leading-relaxed line-clamp-2" title={insightPreview || ""}>
+                                <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2" title={insightPreview || ""}>
                                   {insightPreview || (
-                                    <span className="text-slate-500 italic">Click to view insights</span>
+                                    <span className="text-muted-foreground italic">Click to view insights</span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-600 italic">No insights available</span>
+                                <span className="text-xs text-muted-foreground/40 italic">No insights available</span>
                               )}
                             </TableCell>
                             <TableCell className="text-center px-1">
@@ -1177,7 +1177,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         size="sm"
                         onClick={handlePreviousPage}
                         disabled={currentPage === 1}
-                        className="gap-2 bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 disabled:opacity-50"
+                        className="gap-2 bg-muted/50 border-border hover:bg-muted disabled:opacity-50"
                       >
                         <ChevronLeft className="size-4" />
                         <span className="hidden sm:inline">Previous</span>
@@ -1204,7 +1204,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               className={`w-10 ${
                                 currentPage === pageNum
                                   ? "bg-emerald-600 hover:bg-emerald-700"
-                                  : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-800"
+                                  : "bg-muted/50 border-border hover:bg-muted"
                               }`}
                             >
                               {pageNum}

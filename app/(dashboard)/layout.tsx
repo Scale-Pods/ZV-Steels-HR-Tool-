@@ -24,7 +24,6 @@ import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as 
 import { useState, useEffect, ReactNode } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Toaster } from "sonner"
 import { cn } from "@/lib/utils"
 import { ReportIssueModal } from "@/components/campaigns/report-issue-modal"
 import { PageTransition } from "@/components/animations/page-transition"
@@ -145,7 +144,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         } as React.CSSProperties
       }
     >
-      {mounted && <Toaster position="top-right" closeButton richColors />}
       <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
         <SidebarHeader className="py-8 px-4 group-data-[state=collapsed]:px-0 overflow-hidden">
           <Link href="/" className="flex flex-col items-center justify-center gap-4 hover:opacity-90 transition-opacity">
@@ -160,19 +158,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   priority
                 />
               </div>
-              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 whitespace-nowrap group-data-[state=collapsed]:hidden">
-                ZV Steels Pvt. Ltd.
-              </span>
             </div>
 
-            {/* Powered By & ScalePods - Centered & Bigger */}
             <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-2">
-              <div className="flex items-center gap-3 w-full opacity-60">
-                <div className="h-px w-8 bg-border/30" />
-                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground/30 leading-none text-center">
+              <div className="flex items-center gap-3 w-full opacity-80">
+                <div className="h-px w-8 bg-border/50" />
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground leading-none text-center">
                   Powered By
                 </span>
-                <div className="h-px w-8 bg-border/30" />
+                <div className="h-px w-8 bg-border/50" />
               </div>
               
               <div className="relative h-14 w-44">
@@ -180,18 +174,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"
                   fill
-                  className="object-contain invert dark:invert-0"
+                  className="object-contain dark:invert"
                 />
               </div>
             </div>
           </Link>
         </SidebarHeader>
 
-        <SidebarSeparator className="bg-border/10" />
+        <SidebarSeparator className="bg-border/50" />
 
         <SidebarContent className="py-4">
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/30 px-6 py-4 font-bold">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 px-6 py-4 font-bold">
               Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -200,7 +194,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-border/10 p-2">
+        <SidebarFooter className="border-t border-border/50 p-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton

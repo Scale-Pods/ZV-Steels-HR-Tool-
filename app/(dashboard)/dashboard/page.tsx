@@ -200,7 +200,7 @@ export default function DashboardPage() {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all")
-  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [hrData, setHrData] = useState<HRAnalytics | null>(null)
   const [candidateData, setCandidateData] = useState<CandidateData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -492,7 +492,7 @@ export default function DashboardPage() {
     fetchHRAnalytics(selectedCampaign)
   }, [selectedCampaign])
 
-  if (!isMounted || (loading && !hrData)) {
+  if (!isMounted || (loading && !hrData) || (loadingCampaigns && campaigns.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background transition-colors duration-500">
         <div className="text-center space-y-6">
@@ -511,7 +511,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isNewUser = !loading && hrData && hrData.overview?.totalCandidates === 0 && campaigns.length === 0
+  const isNewUser = !loading && !loadingCampaigns && hrData && hrData.overview?.totalCandidates === 0 && campaigns.length === 0
 
   if (isNewUser) {
     return (
@@ -1046,13 +1046,12 @@ export default function DashboardPage() {
                     </Pie>
                     <RechartsTooltip
                       contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
+                        backgroundColor: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
-                        color: "#fff",
                       }}
-                      labelStyle={{ color: "#fff" }}
-                      itemStyle={{ color: "#fff" }}
+                      itemStyle={{ color: "hsl(var(--popover-foreground))" }}
+                      labelStyle={{ color: "hsl(var(--popover-foreground))" }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1066,8 +1065,8 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   {stageDistributionData.map((entry, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="size-3 rounded-full" style={{ backgroundColor: entry.fill }} />
-                      <span className="text-xs text-slate-300 truncate">
+                      <div className="size-3 rounded-full shadow-sm" style={{ backgroundColor: entry.fill }} />
+                      <span className="text-xs text-muted-foreground font-medium truncate">
                         {entry.name}: {entry.value}
                       </span>
                     </div>
@@ -1143,23 +1142,38 @@ export default function DashboardPage() {
               {cityPerformance.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={cityPerformance.slice(0, 5)}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="city" stroke="#94a3b8" angle={-45} textAnchor="end" height={80} />
-                    <YAxis stroke="#94a3b8" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis 
+                      dataKey="city" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={11} 
+                      tickLine={false} 
+                      axisLine={false} 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={80} 
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={11} 
+                      tickLine={false} 
+                      axisLine={false} 
+                    />
                     <RechartsTooltip
                       contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
+                        backgroundColor: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
                       }}
-                      labelStyle={{ color: "#fff" }}
+                      itemStyle={{ color: "hsl(var(--popover-foreground))" }}
+                      labelStyle={{ color: "hsl(var(--popover-foreground))" }}
                     />
                     <Bar dataKey="hired" fill="#10b981" radius={[8, 8, 0, 0]} name="Hired" />
                     <Bar dataKey="total" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Total" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex flex-col items-center justify-center h-[250px] text-slate-500">
+                <div className="flex flex-col items-center justify-center h-[250px] text-muted-foreground">
                   <Building2 className="size-12 mb-4 opacity-50" />
                   <p>No city data available</p>
                 </div>
@@ -1326,7 +1340,7 @@ export default function DashboardPage() {
                               <p className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {candidate.score || 0}
                               </p>
-                              <p className="text-xs text-slate-400">Score</p>
+                              <p className="text-xs text-muted-foreground">Score</p>
                             </div>
                             <Badge
                               className={`px-3 md:px-4 py-1 text-xs md:text-sm whitespace-nowrap shadow-sm border transition-colors ${
@@ -1364,7 +1378,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Award className="size-16 mb-4 opacity-50" />
                       <p className="text-lg mb-2">
                         {searchQuery ? "No candidates match your search" : "No candidates in this stage"}
