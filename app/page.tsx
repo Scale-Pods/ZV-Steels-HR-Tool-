@@ -427,7 +427,7 @@ export default function LandingPage() {
                       src="/images/scalepods-logo.avif"
                       alt="Scalepods Logo"
                       fill
-                      className="object-contain invert dark:invert-0 scale-[1.4] grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500"
+                      className="object-contain invert dark:invert-0 scale-[1.4] transition-all duration-500"
                     />
                   </div>
                 </div>

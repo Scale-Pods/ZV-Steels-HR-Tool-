@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"
                   fill
-                  className="object-contain dark:invert-0 invert"
+                  className="object-contain invert dark:invert-0"
                 />
               </div>
             </div>

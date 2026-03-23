@@ -174,7 +174,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"
                   fill
-                  className="object-contain dark:invert"
+                  className="object-contain invert dark:invert-0"
                 />
               </div>
             </div>
