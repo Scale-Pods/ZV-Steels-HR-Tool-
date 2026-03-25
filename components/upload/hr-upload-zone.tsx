@@ -802,6 +802,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-4 relative mt-2">
+                {/* Select Folder */}
                 <div className="relative">
                   <input
                     type="file"
@@ -817,6 +818,21 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                   <Button variant="outline" className="bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20 pointer-events-none">
                     <FolderOpen className="size-4 mr-2" />
                     Select Folder
+                  </Button>
+                </div>
+                {/* Select File(s) */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={isUploading}
+                  />
+                  <Button variant="outline" className="bg-violet-500/10 border-violet-500/20 text-violet-400 hover:bg-violet-500/20 pointer-events-none">
+                    <File className="size-4 mr-2" />
+                    Select File(s)
                   </Button>
                 </div>
               </div>

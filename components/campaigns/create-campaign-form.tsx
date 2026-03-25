@@ -57,6 +57,9 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
   const [jobDescription, setJobDescription] = useState("")
   const [locationVal, setLocationVal] = useState("")
   const [expectedAttendees, setExpectedAttendees] = useState("")
+  const [minSalary, setMinSalary] = useState("")
+  const [maxSalary, setMaxSalary] = useState("")
+  const [joiningDate, setJoiningDate] = useState<Date | undefined>(undefined)
   const [numberOfRounds, setNumberOfRounds] = useState<number>(1)
   const [pocEmails, setPocEmails] = useState<string[]>([""])
   const [pocCalendarLinks, setPocCalendarLinks] = useState<string[]>([""])
@@ -162,6 +165,9 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     setJobDescription("")
     setLocationVal("")
     setExpectedAttendees("")
+    setMinSalary("")
+    setMaxSalary("")
+    setJoiningDate(undefined)
     setNumberOfRounds(1)
     setPocEmails([""])
     setPocCalendarLinks([""])
@@ -250,6 +256,9 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     if (jobDescription.trim()) payload.JobDescription = jobDescription.trim()
     if (locationVal.trim()) payload.Location = locationVal.trim()
     if (expectedAttendees)  payload.ExpectedAttendees = Number.parseInt(expectedAttendees, 10) || 0
+    if (minSalary) payload.MinSalary = Number.parseFloat(minSalary)
+    if (maxSalary) payload.MaxSalary = Number.parseFloat(maxSalary)
+    if (joiningDate) payload.JoiningDate = format(joiningDate, "yyyy-MM-dd")
     
     payload.SkillsMatchWeight = skillsWeight
     payload.ExperienceRelevanceWeight = experienceWeight
@@ -422,6 +431,63 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
                 className="bg-background/50"
                 required
               />
+            </div>
+          </div>
+
+          {/* Salary and Joining Date */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Salary Range (LPA) (Optional)</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  placeholder="Min (e.g. 4)"
+                  value={minSalary}
+                  onChange={(e) => setMinSalary(e.target.value)}
+                  disabled={isSubmitting}
+                  className="bg-background/50"
+                  min="0"
+                  step="0.1"
+                />
+                <span className="text-muted-foreground">-</span>
+                <Input
+                  type="number"
+                  placeholder="Max (e.g. 6)"
+                  value={maxSalary}
+                  onChange={(e) => setMaxSalary(e.target.value)}
+                  disabled={isSubmitting}
+                  className="bg-background/50"
+                  min="0"
+                  step="0.1"
+                />
+              </div>
+            </div>
+
+            {/* Joining Date */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Expected Joining Date (Optional)</Label>
+              <Popover>
+                <PopoverTrigger
+                  className={cn(
+                    "flex h-9 w-full items-center justify-start rounded-md border border-input bg-background/50 px-3 py-2 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                    !joiningDate && "text-muted-foreground"
+                  )}
+                  disabled={isSubmitting}
+                  type="button"
+                >
+                  <CalendarIcon className="mr-2 size-4 shrink-0" />
+                  {joiningDate ? format(joiningDate, "PPP") : <span>Pick a date</span>}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={joiningDate}
+                    onSelect={setJoiningDate}
+                    disabled={(d) => d < today}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
