@@ -126,8 +126,8 @@ function answerStyle(a: string): { label: string; type: "yes" | "no" | "other" }
 }
 
 function SortIcon({ field, sortField, sortDir }: { field: string, sortField: string, sortDir: string }) {
-  if (sortField !== field) return <ChevronDown className="size-3 text-slate-700" />
-  return sortDir === "asc" ? <ChevronUp className="size-3 text-cyan-400" /> : <ChevronDown className="size-3 text-cyan-400" />
+  if (sortField !== field) return <ChevronDown className="size-3 text-muted-foreground/40" />
+  return sortDir === "asc" ? <ChevronUp className="size-3 text-cyan-500" /> : <ChevronDown className="size-3 text-cyan-500" />
 }
 
 function DecisionSelect({ 
@@ -145,24 +145,24 @@ function DecisionSelect({
     <Select value={status} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={cn(
         "h-8 w-[120px] rounded-lg border-none text-[10px] font-black uppercase tracking-wider px-3 transition-all",
-        status === "Passed" && "bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_-5px_var(--color-emerald-500)]",
-        status === "Rejected" && "bg-red-500/10 text-red-400 shadow-[0_0_15px_-5px_var(--color-red-500)]",
-        status === "Pending" && "bg-slate-700/30 text-slate-400"
+        status === "Passed" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-[0_0_15px_-5px_var(--color-emerald-500)]",
+        status === "Rejected" && "bg-red-500/10 text-red-600 dark:text-red-400 shadow-[0_0_15px_-5px_var(--color-red-500)]",
+        status === "Pending" && "bg-muted text-muted-foreground"
       )}>
         <div className="flex items-center gap-1.5">
           <div className={cn(
             "size-1.5 rounded-full",
-            status === "Passed" && "bg-emerald-400 animate-pulse",
-            status === "Rejected" && "bg-red-400",
-            status === "Pending" && "bg-slate-500"
+            status === "Passed" && "bg-emerald-500 animate-pulse",
+            status === "Rejected" && "bg-red-500",
+            status === "Pending" && "bg-muted-foreground/50"
           )} />
           <SelectValue placeholder="Status" />
         </div>
       </SelectTrigger>
-      <SelectContent className="bg-slate-900 border-white/10">
-        <SelectItem value="Passed" className="text-emerald-400 focus:text-emerald-300">Passed</SelectItem>
-        <SelectItem value="Rejected" className="text-red-400 focus:text-red-300">Rejected</SelectItem>
-        <SelectItem value="Pending" className="text-slate-400">Pending</SelectItem>
+      <SelectContent className="bg-popover border-border">
+        <SelectItem value="Passed" className="text-emerald-600 dark:text-emerald-400 focus:text-emerald-700">Passed</SelectItem>
+        <SelectItem value="Rejected" className="text-red-600 dark:text-red-400 focus:text-red-700">Rejected</SelectItem>
+        <SelectItem value="Pending" className="text-muted-foreground">Pending</SelectItem>
       </SelectContent>
     </Select>
   )
@@ -393,7 +393,7 @@ export default function CallAnalysisPage() {
       {/* Constraints & Controls */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input 
             placeholder="Search by name, email, city..." 
             value={search} 
@@ -449,23 +449,23 @@ export default function CallAnalysisPage() {
               {loading ? (
                 <tr>
                   <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
-                    <Loader2 className="size-10 animate-spin mx-auto text-cyan-400 mb-4 opacity-50" />
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Processing Transcripts...</p>
+                    <Loader2 className="size-10 animate-spin mx-auto text-primary mb-4 opacity-50" />
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Processing Transcripts...</p>
                   </td>
                 </tr>
               ) : !selectedCampaign ? (
                 <tr>
                   <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
-                    <Sparkles className="size-10 mx-auto text-cyan-500/30 mb-4 animate-pulse" />
-                    <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Select a campaign to view the data</p>
-                    <p className="text-slate-600 text-[9px] mt-2">Choose a campaign from the dropdown above to start analysis</p>
+                    <Sparkles className="size-10 mx-auto text-primary/30 mb-4 animate-pulse" />
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Select a campaign to view the data</p>
+                    <p className="text-muted-foreground/60 text-[9px] mt-2">Choose a campaign from the dropdown above to start analysis</p>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
-                    <PhoneCall className="size-8 mx-auto text-slate-800 mb-4" />
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px]">No matching records found</p>
+                    <PhoneCall className="size-8 mx-auto text-muted-foreground/30 mb-4" />
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px]">No matching records found</p>
                   </td>
                 </tr>
               ) : (
@@ -486,13 +486,13 @@ export default function CallAnalysisPage() {
                             {name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-white text-[11px] truncate leading-none">{name}</p>
-                            <p className="text-[9px] text-slate-500 mt-1 truncate font-medium">{c.Email || ""}</p>
+                            <p className="font-bold text-foreground text-[11px] truncate leading-none">{name}</p>
+                            <p className="text-[9px] text-muted-foreground mt-1 truncate font-medium">{c.Email || ""}</p>
                           </div>
                         </div>
                       </td>
                       <td 
-                        className="px-3 py-2 border-r border-white/5"
+                        className="px-3 py-2 border-r border-border"
                         onClick={(e) => e.stopPropagation()} // Prevent sidebar from opening when clicking dropdown
                       >
                         <DecisionSelect 
@@ -516,7 +516,7 @@ export default function CallAnalysisPage() {
                                 <X className="size-2.5" /> NO
                               </div>
                             ) : (
-                              <p className="text-foreground/80 dark:text-slate-300 text-[9px] leading-tight line-clamp-2" title={val}>{val}</p>
+                              <p className="text-foreground/80 text-[9px] leading-tight line-clamp-2" title={val}>{val}</p>
                             )}
                           </td>
                         )

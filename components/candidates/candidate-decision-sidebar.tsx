@@ -184,7 +184,7 @@ function DecisionButtons({
 function StatusPill({ value }: { value: string }) {
   if (!value) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-700/50 text-slate-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
         <Clock className="size-3" />
         Pending
       </span>
@@ -927,11 +927,11 @@ function StructuredValue({
     }
 
     return (
-      <div className="flex items-start gap-3 py-2 border-b border-slate-700/20 last:border-0 group">
-        <span className="text-slate-400 shrink-0 min-w-[90px] text-xs font-semibold group-hover:text-slate-300 transition-colors">
+      <div className="flex items-start gap-3 py-2 border-b border-border last:border-0 group">
+        <span className="text-muted-foreground shrink-0 min-w-[90px] text-xs font-semibold group-hover:text-foreground transition-colors">
           {displayLabel}:
         </span>
-        <span className="text-slate-200 text-sm break-all leading-tight group-hover:text-white transition-colors">
+        <span className="text-foreground text-sm break-all leading-tight">
           {String(value)}
         </span>
       </div>
@@ -942,37 +942,37 @@ function StructuredValue({
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-1">Candidate Evaluation</h3>
-        <p className="text-sm text-slate-400">Step-by-step round decisions</p>
+        <h3 className="text-xl font-bold text-foreground mb-1">Candidate Evaluation</h3>
+        <p className="text-sm text-muted-foreground">Step-by-step round decisions</p>
       </div>
 
-      <Separator className="bg-slate-700/50" />
+      <Separator className="bg-border" />
 
       {/* Candidate Info */}
-      <Card className="bg-slate-800/40 border-slate-700/50">
+      <Card className="bg-muted/30 border-border">
         <CardContent className="py-3 px-4 space-y-2">
           <div className="flex items-center gap-3 text-sm">
-            <User className="size-4 text-emerald-400 shrink-0" />
-            <span className="text-slate-400">Campaign:</span>
-            <span className="text-white font-medium truncate">{campaignName}</span>
+            <User className="size-4 text-emerald-500 shrink-0" />
+            <span className="text-muted-foreground">Campaign:</span>
+            <span className="text-foreground font-medium truncate">{campaignName}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <Mail className="size-4 text-blue-400 shrink-0" />
-            <span className="text-slate-400">Email:</span>
-            <span className="text-white font-medium truncate">{candidateEmail}</span>
+            <Mail className="size-4 text-blue-500 shrink-0" />
+            <span className="text-muted-foreground">Email:</span>
+            <span className="text-foreground font-medium truncate">{candidateEmail}</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Rounds Pipeline */}
       <div className="space-y-2">
-        <Label className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+        <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
           Interview Pipeline
         </Label>
 
         <div className="relative">
           {/* Vertical connector line */}
-          <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-700/60 z-0" />
+          <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-border z-0" />
 
           <div className="space-y-1.5 relative z-10">
 
@@ -1002,7 +1002,7 @@ function StructuredValue({
                         "size-[38px] shrink-0 rounded-full flex items-center justify-center border-2 transition-colors",
                         isDecided
                           ? value === "Yes" ? "bg-emerald-500/20 border-emerald-500/50" : "bg-red-500/20 border-red-500/50"
-                          : "bg-slate-800 border-slate-600/50"
+                          : "bg-muted border-border"
                       )}
                     >
                       <span className={cn(round.iconColor, isDecided && value === "Yes" && "text-emerald-400", isDecided && value === "No" && "text-red-400")}>
@@ -1011,19 +1011,19 @@ function StructuredValue({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{round.title}</span>
+                        <span className="text-sm font-semibold text-foreground">{round.title}</span>
                         <StatusPill value={value} />
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Round 1 of {totalRounds}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Round 1 of {totalRounds}</p>
                     </div>
-                    {isExpanded ? <ChevronUp className="size-4 text-slate-500 shrink-0" /> : <ChevronDown className="size-4 text-slate-500 shrink-0" />}
+                    {isExpanded ? <ChevronUp className="size-4 text-muted-foreground shrink-0" /> : <ChevronDown className="size-4 text-muted-foreground shrink-0" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-slate-700/40">
+                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
                       <div className={cn("h-0.5 w-12 rounded-full", round.barColor, "opacity-60")} />
                       <div className="space-y-2">
-                        <Label className="text-slate-400 text-xs">Decision</Label>
+                        <Label className="text-muted-foreground text-xs">Decision</Label>
                         <DecisionButtons
                           value={value}
                           onChange={(v) => setFormData({ ...formData, [round.valueKey]: v })}
@@ -1032,13 +1032,13 @@ function StructuredValue({
                       </div>
 
                       {candidateDetails?.MailSent && (
-                        <div className="mt-4 pt-4 border-t border-slate-700/30 space-y-2 text-left">
-                          <Label className="text-slate-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-2">
-                            <Mail className="size-3 text-blue-400" />
+                        <div className="mt-4 pt-4 border-t border-border space-y-2 text-left">
+                          <Label className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider flex items-center gap-2">
+                            <Mail className="size-3 text-blue-500" />
                             Email Confirmation
                           </Label>
-                          <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner">
-                             <p className="text-sm text-slate-200 font-medium">{candidateDetails.MailSent}</p>
+                          <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner">
+                             <p className="text-sm text-foreground font-medium">{candidateDetails.MailSent}</p>
                           </div>
                         </div>
                       )}
@@ -1059,8 +1059,8 @@ function StructuredValue({
                   className={cn(
                     "rounded-xl border transition-all duration-200 overflow-hidden",
                     isExpanded
-                      ? "bg-slate-800/70 border-cyan-600/40 shadow-lg"
-                      : "bg-slate-800/30 border-slate-700/40 hover:border-slate-600/50"
+                      ? "bg-muted/60 border-cyan-500/30 shadow-lg"
+                      : "bg-muted/20 border-border hover:border-border"
                   )}
                 >
                   <button
@@ -1073,7 +1073,7 @@ function StructuredValue({
                         "size-[38px] shrink-0 rounded-full flex items-center justify-center border-2 transition-colors",
                         isDecided
                           ? callRoundDecisionNormalized === "Yes" ? "bg-emerald-500/20 border-emerald-500/50" : "bg-red-500/20 border-red-500/50"
-                          : "bg-slate-800 border-cyan-600/50"
+                          : "bg-muted border-cyan-500/40"
                       )}
                     >
                       <PhoneCall className={cn(
@@ -1085,7 +1085,7 @@ function StructuredValue({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">Call Round</span>
+                        <span className="text-sm font-semibold text-foreground">Call Round</span>
                         {isLoadingCallData ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/15 text-cyan-400">
                             <Loader2 className="size-3 animate-spin" />
@@ -1094,24 +1094,24 @@ function StructuredValue({
                         ) : hasData ? (
                           <StatusPill value={callRoundDecisionNormalized} />
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-700/50 text-slate-400">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
                             <Info className="size-3" />
                             Awaiting Data
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Round 2 of {totalRounds} - Data from webhook</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Round 2 of {totalRounds} - Data from webhook</p>
                     </div>
-                    {isExpanded ? <ChevronUp className="size-4 text-slate-500 shrink-0" /> : <ChevronDown className="size-4 text-slate-500 shrink-0" />}
+                    {isExpanded ? <ChevronUp className="size-4 text-muted-foreground shrink-0" /> : <ChevronDown className="size-4 text-muted-foreground shrink-0" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-slate-700/40">
+                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
                       <div className="h-0.5 w-12 rounded-full bg-cyan-500 opacity-60" />
 
                       {/* Manual Decision Override */}
                       <div className="space-y-2">
-                        <Label className="text-slate-400 text-xs">Manual Decision</Label>
+                        <Label className="text-muted-foreground text-xs">Manual Decision</Label>
                         <DecisionButtons
                           value={formData["Call Round"] || ""}
                           onChange={(v) => setFormData({ ...formData, "Call Round": v })}
@@ -1125,7 +1125,7 @@ function StructuredValue({
                         )}
                       </div>
 
-                      <Separator className="bg-slate-700/30 my-2" />
+                      <Separator className="bg-border my-2" />
 
                       {isLoadingCallData ? (
                         <div className="flex items-center justify-center py-6 gap-2 text-slate-400 text-sm">
@@ -1136,15 +1136,15 @@ function StructuredValue({
                          <div className="space-y-3">
                             {/* Data from Webhook Label */}
                             <div className="flex items-center gap-2">
-                              <Label className="text-slate-500 text-[10px] uppercase font-black tracking-widest">Automated Call Results</Label>
-                              <div className="flex-1 h-px bg-slate-700/40" />
+                              <Label className="text-muted-foreground text-[10px] uppercase font-black tracking-widest">Automated Call Results</Label>
+                              <div className="flex-1 h-px bg-border" />
                               <div className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
                             </div>
 
                             {/* Decision display */}
                             {callRoundData.decision && (
                               <div className="space-y-1.5">
-                                <Label className="text-slate-400 text-xs">Call Decision</Label>
+                                <Label className="text-muted-foreground text-xs">Call Decision</Label>
                                 <div className={cn(
                                   "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-bold shadow-lg",
                                   callRoundDecisionNormalized === "Yes"
@@ -1166,7 +1166,7 @@ function StructuredValue({
                             )}
 
                              {/* Automated call results - only shows call-specific data */}
-                             <div className="space-y-3 bg-slate-900/40 p-4 rounded-xl border border-slate-700/40 shadow-inner">
+                             <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border shadow-inner">
                                {renderCallDataField("Called By", callRoundData.calledBy || callRoundData.CalledBy || callRoundData["Called By"])}
                                {renderCallDataField("Call Date", callRoundData.callDate || callRoundData.CallDate || callRoundData["Call Date"])}
                                {renderCallDataField("Duration", callRoundData.duration || callRoundData.Duration)}
@@ -1175,11 +1175,11 @@ function StructuredValue({
 
                                {/* Call Recording */}
                                {(callRoundData.callRecording || callRoundData.CallRecording || (candidateDetails && candidateDetails.CallRecording)) && (
-                                 <div className="pt-2 mt-2 border-t border-slate-700/30 space-y-2">
+                                 <div className="pt-2 mt-2 border-t border-border space-y-2">
                                    <div className="flex items-center gap-2">
                                      <Phone className="size-3 text-cyan-400/70" />
                                      <span className="text-cyan-400 text-[10px] uppercase font-black tracking-widest">Call Recording</span>
-                                     <div className="flex-1 h-px bg-slate-700/40" />
+                                     <div className="flex-1 h-px bg-border" />
                                    </div>
                                    <Button
                                      variant="outline"
@@ -1198,11 +1198,11 @@ function StructuredValue({
 
                                {/* Followup Stages Section */}
                                {followup && (
-                                 <div className="pt-2 mt-2 border-t border-slate-700/30">
+                                 <div className="pt-2 mt-2 border-t border-border">
                                    <div className="flex items-center justify-between mb-3">
                                      <div className="flex items-center gap-2">
                                        <MessageCircle className="size-3 text-emerald-400" />
-                                       <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Followup Stages</span>
+                                       <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Followup Stages</span>
                                      </div>
                                      {followup.isResponded && (
                                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0 h-4 uppercase tracking-tighter">
@@ -1216,11 +1216,11 @@ function StructuredValue({
                                      {followup.stages.map((stage, index) => {
                                        const isCompleted = stage.isCompleted
                                        
-                                       let bgClass = "bg-slate-800/50 border-slate-700/30"
-                                       let iconBg = "bg-slate-700/50"
-                                       let iconColor = "text-slate-500"
-                                       let textClass = "text-slate-600"
-                                       let connector = "bg-slate-700/30"
+                                       let bgClass = "bg-muted/50 border-border"
+                                       let iconBg = "bg-muted"
+                                       let iconColor = "text-muted-foreground"
+                                       let textClass = "text-muted-foreground/60"
+                                       let connector = "bg-border"
                                        
                                        if (isCompleted) {
                                          bgClass = stage.classes.pastBg.replace('from-blue-500/20', 'from-blue-500/10') // subtle
@@ -1245,7 +1245,7 @@ function StructuredValue({
                                                <span className={cn("text-[9px] font-bold leading-tight block truncate", textClass)}>
                                                  {stage.label}
                                                </span>
-                                               <p className="text-[8px] text-slate-500 mt-0.5 font-medium">
+                                               <p className="text-[8px] text-muted-foreground mt-0.5 font-medium">
                                                  {isCompleted ? String(stage.value) : "—"}
                                                </p>
                                              </div>
@@ -1270,7 +1270,7 @@ function StructuredValue({
                               size="sm"
                               onClick={() => fetchCallRoundData()}
                               disabled={isLoadingCallData}
-                              className="w-full h-9 text-xs text-slate-400 hover:text-white border-slate-700/50 bg-slate-800/20 hover:bg-slate-800/60 rounded-lg group transition-all"
+                              className="w-full h-9 text-xs text-muted-foreground hover:text-foreground border-border bg-muted/20 hover:bg-muted/60 rounded-lg group transition-all"
                             >
                               <RefreshCcw className={cn("size-3 mr-2 group-hover:rotate-180 transition-transform duration-500", isLoadingCallData && "animate-spin")} />
                               {isLoadingCallData ? "Fetching Updates..." : "Refresh Call Data"}
@@ -1278,12 +1278,12 @@ function StructuredValue({
                          </div>
                       ) : (
                         <div className="text-center py-5 space-y-3">
-                          <div className="size-10 mx-auto rounded-full bg-slate-700/40 flex items-center justify-center">
-                            <PhoneCall className="size-5 text-slate-500" />
+                          <div className="size-10 mx-auto rounded-full bg-muted flex items-center justify-center">
+                            <PhoneCall className="size-5 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="text-sm text-slate-400">No call data available yet</p>
-                            <p className="text-[11px] text-slate-600 mt-0.5">Data will appear here once the call round is completed</p>
+                            <p className="text-sm text-muted-foreground">No call data available yet</p>
+                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Data will appear here once the call round is completed</p>
                           </div>
                           <Button
                             variant="ghost"
@@ -1316,8 +1316,8 @@ function StructuredValue({
                   className={cn(
                     "rounded-xl border transition-all duration-200 overflow-hidden",
                     isExpanded
-                      ? "bg-slate-800/70 border-slate-600/60 shadow-lg"
-                      : "bg-slate-800/30 border-slate-700/40 hover:border-slate-600/50"
+                      ? "bg-muted/60 border-border shadow-lg"
+                      : "bg-muted/20 border-border hover:border-border"
                   )}
                 >
                   <button
@@ -1330,7 +1330,7 @@ function StructuredValue({
                         "size-[38px] shrink-0 rounded-full flex items-center justify-center border-2 transition-colors",
                         isDecided
                           ? value === "Yes" ? "bg-emerald-500/20 border-emerald-500/50" : "bg-red-500/20 border-red-500/50"
-                          : "bg-slate-800 border-slate-600/50"
+                          : "bg-muted border-border"
                       )}
                     >
                       <span className={cn(round.iconColor, isDecided && value === "Yes" && "text-emerald-400", isDecided && value === "No" && "text-red-400")}>
@@ -1340,23 +1340,23 @@ function StructuredValue({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{round.title}</span>
+                        <span className="text-sm font-semibold text-foreground">{round.title}</span>
                         <StatusPill value={value} />
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         Round {actualIndex + 1} of {totalRounds}
                       </p>
                     </div>
 
-                    {isExpanded ? <ChevronUp className="size-4 text-slate-500 shrink-0" /> : <ChevronDown className="size-4 text-slate-500 shrink-0" />}
+                    {isExpanded ? <ChevronUp className="size-4 text-muted-foreground shrink-0" /> : <ChevronDown className="size-4 text-muted-foreground shrink-0" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-slate-700/40">
+                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
                       <div className={cn("h-0.5 w-12 rounded-full", round.barColor, "opacity-60")} />
 
                       <div className="space-y-2">
-                        <Label className="text-slate-400 text-xs">Decision</Label>
+                        <Label className="text-muted-foreground text-xs">Decision</Label>
                         <DecisionButtons
                           value={value}
                           onChange={(v) => setFormData({ ...formData, [round.valueKey]: v })}
@@ -1373,26 +1373,26 @@ function StructuredValue({
                           <div className="grid grid-cols-2 gap-4">
                             {candidateDetails.HRMeetingDate && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Date</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.HRMeetingDate}</p>
+                                <p className="text-[10px] text-muted-foreground">Date</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.HRMeetingDate}</p>
                               </div>
                             )}
                             {candidateDetails.HRMeetingTime && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Time</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.HRMeetingTime}</p>
+                                <p className="text-[10px] text-muted-foreground">Time</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.HRMeetingTime}</p>
                               </div>
                             )}
                             {candidateDetails.HREventID && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Event ID</p>
-                                <p className="text-[10px] text-slate-300 font-mono truncate">{candidateDetails.HREventID}</p>
+                                <p className="text-[10px] text-muted-foreground">Event ID</p>
+                                <p className="text-[10px] text-foreground font-mono truncate">{candidateDetails.HREventID}</p>
                               </div>
                             )}
                             {candidateDetails.HRMeetingType && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Meeting Type</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.HRMeetingType}</p>
+                                <p className="text-[10px] text-muted-foreground">Meeting Type</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.HRMeetingType}</p>
                               </div>
                             )}
                           </div>
@@ -1429,20 +1429,20 @@ function StructuredValue({
                       {round.title === "HR Round" && (candidateDetails?.HRMeetingMail || candidateDetails?.HRWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.HRMeetingMail && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <Mail className="size-3.5 text-blue-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">HR Meeting Mail Sent</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.HRMeetingMail}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">HR Meeting Mail Sent</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.HRMeetingMail}</p>
                               </div>
                             </div>
                           )}
                           {candidateDetails.HRWAFollowup && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <MessageCircle className="size-3.5 text-emerald-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">WhatsApp Notification Date</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.HRWAFollowup}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">WhatsApp Notification Date</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.HRWAFollowup}</p>
                               </div>
                             </div>
                           )}
@@ -1458,26 +1458,26 @@ function StructuredValue({
                           <div className="grid grid-cols-2 gap-4">
                             {candidateDetails.TechMeetingDate && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Date</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.TechMeetingDate}</p>
+                                <p className="text-[10px] text-muted-foreground">Date</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.TechMeetingDate}</p>
                               </div>
                             )}
                             {candidateDetails.TechMeetingTime && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Time</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.TechMeetingTime}</p>
+                                <p className="text-[10px] text-muted-foreground">Time</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.TechMeetingTime}</p>
                               </div>
                             )}
                             {candidateDetails.TechEventID && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Event ID</p>
-                                <p className="text-[10px] text-slate-300 font-mono truncate">{candidateDetails.TechEventID}</p>
+                                <p className="text-[10px] text-muted-foreground">Event ID</p>
+                                <p className="text-[10px] text-foreground font-mono truncate">{candidateDetails.TechEventID}</p>
                               </div>
                             )}
                             {candidateDetails.TechMeetingType && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Meeting Type</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.TechMeetingType}</p>
+                                <p className="text-[10px] text-muted-foreground">Meeting Type</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.TechMeetingType}</p>
                               </div>
                             )}
                           </div>
@@ -1514,20 +1514,20 @@ function StructuredValue({
                       {round.title === "Tech Interview" && (candidateDetails?.TechMailSent || candidateDetails?.TechWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.TechMailSent && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <Mail className="size-3.5 text-blue-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Tech Mail Sent</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.TechMailSent}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Tech Mail Sent</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.TechMailSent}</p>
                               </div>
                             </div>
                           )}
                           {candidateDetails.TechWAFollowup && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <MessageCircle className="size-3.5 text-emerald-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Tech WA Followup</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.TechWAFollowup}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Tech WA Followup</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.TechWAFollowup}</p>
                               </div>
                             </div>
                           )}
@@ -1543,26 +1543,26 @@ function StructuredValue({
                           <div className="grid grid-cols-2 gap-4">
                             {candidateDetails.ManagerMeetingDate && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Date</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.ManagerMeetingDate}</p>
+                                <p className="text-[10px] text-muted-foreground">Date</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.ManagerMeetingDate}</p>
                               </div>
                             )}
                             {candidateDetails.ManagerMeetingTime && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Time</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.ManagerMeetingTime}</p>
+                                <p className="text-[10px] text-muted-foreground">Time</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.ManagerMeetingTime}</p>
                               </div>
                             )}
                             {candidateDetails.ManagerEventID && (
                               <div>
-                                <p className="text-[10px] text-slate-500">Meeting Type (Walk-in/Online)</p>
-                                <p className="text-[10px] text-slate-300 font-mono truncate">{candidateDetails.ManagerEventID}</p>
+                                <p className="text-[10px] text-muted-foreground">Meeting Type (Walk-in/Online)</p>
+                                <p className="text-[10px] text-foreground font-mono truncate">{candidateDetails.ManagerEventID}</p>
                               </div>
                             )}
                             {candidateDetails.ManagerMeetingType && (
                               <div>
-                                <p className="text-[10px] text-slate-500">HR Defined Type</p>
-                                <p className="text-xs text-slate-200 font-medium">{candidateDetails.ManagerMeetingType}</p>
+                                <p className="text-[10px] text-muted-foreground">HR Defined Type</p>
+                                <p className="text-xs text-foreground font-medium">{candidateDetails.ManagerMeetingType}</p>
                               </div>
                             )}
                           </div>
@@ -1599,20 +1599,20 @@ function StructuredValue({
                       {round.title === "Manager Interview" && (candidateDetails?.ManagerMeetingMail || candidateDetails?.ManagerWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.ManagerMeetingMail && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <Mail className="size-3.5 text-blue-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Manager Meeting Mail Sent</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.ManagerMeetingMail}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Manager Meeting Mail Sent</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.ManagerMeetingMail}</p>
                               </div>
                             </div>
                           )}
                           {candidateDetails.ManagerWAFollowup && (
-                            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-700/40 shadow-inner flex items-start gap-3">
+                            <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
                               <MessageCircle className="size-3.5 text-emerald-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Manager WA Followup</p>
-                                <p className="text-xs text-slate-200 mt-0.5">{candidateDetails.ManagerWAFollowup}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Manager WA Followup</p>
+                                <p className="text-xs text-foreground mt-0.5">{candidateDetails.ManagerWAFollowup}</p>
                               </div>
                             </div>
                           )}
@@ -1621,7 +1621,7 @@ function StructuredValue({
 
                       {round.hasComments && round.commentsKey && (
                         <div className="space-y-2">
-                          <Label className="text-slate-400 text-xs flex items-center gap-1.5">
+                          <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
                             <MessageSquare className="size-3" />
                             Comments
                           </Label>
@@ -1632,7 +1632,7 @@ function StructuredValue({
                               setFormData({ ...formData, [round.commentsKey!]: e.target.value })
                             }
                             disabled={isSubmitting}
-                            className="bg-slate-900/50 border-slate-700/50 text-white placeholder:text-slate-600 min-h-[80px] text-sm"
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground min-h-[80px] text-sm"
                           />
                         </div>
                       )}
@@ -1646,7 +1646,7 @@ function StructuredValue({
       </div>
 
       {/* Overall Summary */}
-      <Card className="bg-slate-800/30 border-slate-700/40">
+      <Card className="bg-muted/20 border-border">
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-5 gap-1.5 text-center">
             {/* Resume Screening */}
@@ -1654,20 +1654,20 @@ function StructuredValue({
               const v = formData["Resume Screening"] || ""
               return (
                 <div className="space-y-1">
-                  <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", v === "Yes" ? "bg-emerald-500/20" : v === "No" ? "bg-red-500/20" : "bg-slate-700/40")}>
-                    {v === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-400" /> : v === "No" ? <XCircle className="size-3.5 text-red-400" /> : <Clock className="size-3.5 text-slate-500" />}
+                  <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", v === "Yes" ? "bg-emerald-500/20" : v === "No" ? "bg-red-500/20" : "bg-muted")}>
+                    {v === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : v === "No" ? <XCircle className="size-3.5 text-red-500" /> : <Clock className="size-3.5 text-muted-foreground" />}
                   </div>
-                  <p className="text-[9px] text-slate-500 font-medium leading-tight">Resume</p>
+                  <p className="text-[9px] text-muted-foreground font-medium leading-tight">Resume</p>
                 </div>
               )
             })()}
 
             {/* Call Round */}
             <div className="space-y-1">
-              <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", callRoundDecisionNormalized === "Yes" ? "bg-emerald-500/20" : callRoundDecisionNormalized === "No" ? "bg-red-500/20" : "bg-slate-700/40")}>
-                {callRoundDecisionNormalized === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-400" /> : callRoundDecisionNormalized === "No" ? <XCircle className="size-3.5 text-red-400" /> : isLoadingCallData ? <Loader2 className="size-3.5 text-cyan-400 animate-spin" /> : <PhoneCall className="size-3.5 text-slate-500" />}
+              <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", callRoundDecisionNormalized === "Yes" ? "bg-emerald-500/20" : callRoundDecisionNormalized === "No" ? "bg-red-500/20" : "bg-muted")}>
+                {callRoundDecisionNormalized === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : callRoundDecisionNormalized === "No" ? <XCircle className="size-3.5 text-red-500" /> : isLoadingCallData ? <Loader2 className="size-3.5 text-cyan-500 animate-spin" /> : <PhoneCall className="size-3.5 text-muted-foreground" />}
               </div>
-              <p className="text-[9px] text-slate-500 font-medium leading-tight">Call</p>
+              <p className="text-[9px] text-muted-foreground font-medium leading-tight">Call</p>
             </div>
 
             {/* HR, Tech, Manager */}
@@ -1675,10 +1675,10 @@ function StructuredValue({
               const v = formData[round.valueKey] || ""
               return (
                 <div key={round.title} className="space-y-1">
-                  <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", v === "Yes" ? "bg-emerald-500/20" : v === "No" ? "bg-red-500/20" : "bg-slate-700/40")}>
-                    {v === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-400" /> : v === "No" ? <XCircle className="size-3.5 text-red-400" /> : <Clock className="size-3.5 text-slate-500" />}
+                  <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", v === "Yes" ? "bg-emerald-500/20" : v === "No" ? "bg-red-500/20" : "bg-muted")}>
+                    {v === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : v === "No" ? <XCircle className="size-3.5 text-red-500" /> : <Clock className="size-3.5 text-muted-foreground" />}
                   </div>
-                  <p className="text-[9px] text-slate-500 font-medium leading-tight">
+                  <p className="text-[9px] text-muted-foreground font-medium leading-tight">
                     {round.title.split(" ")[0]}
                   </p>
                 </div>
@@ -1688,7 +1688,7 @@ function StructuredValue({
         </CardContent>
       </Card>
 
-      <Separator className="bg-slate-700/50" />
+      <Separator className="bg-border" />
 
       {/* Submit */}
       {!hideSubmit && (
@@ -1715,40 +1715,40 @@ function StructuredValue({
 
       {/* Reschedule Dialog */}
       <Dialog open={rescheduleDialog.isOpen} onOpenChange={(open) => setRescheduleDialog(prev => ({ ...prev, isOpen: open }))}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+        <DialogContent className="bg-card border-border max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2 text-foreground">
               <CalendarClock className="size-5 text-blue-400" />
               Reschedule {rescheduleDialog.meetingType?.toUpperCase()} Meeting
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {rescheduleDialog.interviewerEmail && (
-              <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs">
-                <p className="text-slate-400 mb-1">Interviewer</p>
-                <p className="text-slate-200 font-medium">{rescheduleDialog.interviewerEmail}</p>
+              <div className="p-3 rounded-lg bg-muted border border-border text-xs">
+                <p className="text-muted-foreground mb-1">Interviewer</p>
+                <p className="text-foreground font-medium">{rescheduleDialog.interviewerEmail}</p>
               </div>
             )}
             <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">New Date</Label>
+              <Label className="text-muted-foreground text-xs">New Date</Label>
               <Input
                 type="date"
                 value={rescheduleDialog.date}
                 onChange={(e) => setRescheduleDialog(prev => ({ ...prev, date: e.target.value }))}
                 min={new Date().toISOString().split("T")[0]}
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-background border-border text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">New Time</Label>
+              <Label className="text-muted-foreground text-xs">New Time</Label>
               <Select
                 value={rescheduleDialog.time}
                 onValueChange={(v) => setRescheduleDialog(prev => ({ ...prev, time: v }))}
               >
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select a time slot" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-700 text-white max-h-60">
+                <SelectContent className="bg-popover border-border max-h-60">
                   {Array.from({ length: 22 }, (_, i) => {
                     const totalMins = 9 * 60 + i * 30 // Start at 9:00 AM, 30-min slots
                     const h24 = Math.floor(totalMins / 60)
@@ -1758,7 +1758,7 @@ function StructuredValue({
                     const label = `${h12}:${min === 0 ? "00" : "30"} ${ampm}`
                     const value = `${String(h24).padStart(2, "0")}:${min === 0 ? "00" : "30"}`
                     return (
-                      <SelectItem key={value} value={value} className="text-slate-200 focus:bg-slate-700 focus:text-white">
+                      <SelectItem key={value} value={value} className="text-foreground focus:bg-muted">
                         {label}
                       </SelectItem>
                     )
@@ -1771,7 +1771,7 @@ function StructuredValue({
             <Button
               variant="ghost"
               onClick={() => setRescheduleDialog(prev => ({ ...prev, isOpen: false }))}
-              className="text-slate-400 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
