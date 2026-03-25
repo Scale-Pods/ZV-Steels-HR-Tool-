@@ -115,5 +115,16 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Subtle gradient mesh so glass cards have texture to blur against */
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.7 0.15 254 / 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, oklch(0.6 0.12 200 / 0.10) 0%, transparent 50%);
+    background-attachment: fixed;
   }
+}
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.4 0.15 254 / 0.20) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, oklch(0.3 0.12 200 / 0.15) 0%, transparent 50%);
 }

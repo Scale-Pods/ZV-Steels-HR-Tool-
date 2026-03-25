@@ -7,7 +7,17 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-3 rounded-xl border border-border py-4 px-4 sm:py-5 sm:px-5",
+        // iOS-style glassmorphism
+        "relative flex flex-col gap-3 rounded-2xl py-4 px-4 sm:py-5 sm:px-5",
+        // Glass base: translucent bg + blur
+        "bg-white/60 dark:bg-white/6",
+        "backdrop-blur-xl backdrop-saturate-150",
+        // Subtle border: top-highlight like iOS materials
+        "border border-white/70 dark:border-white/8",
+        // Layered shadow for depth
+        "shadow-[0_4px_24px_-4px_rgba(0,0,0,0.10),0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5),0_1px_2px_rgba(0,0,0,0.3)]",
+        // Text
+        "text-card-foreground",
         className,
       )}
       {...props}
