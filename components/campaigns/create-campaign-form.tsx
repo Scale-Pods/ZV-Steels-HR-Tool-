@@ -437,28 +437,34 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
           {/* Salary and Joining Date */}
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Salary Range (LPA) (Optional)</Label>
+              <Label className="text-sm font-medium">Salary Range (LPA Annually) (Optional)</Label>
               <div className="flex items-center space-x-2">
                 <Input
                   type="number"
                   placeholder="Min (e.g. 4)"
                   value={minSalary}
-                  onChange={(e) => setMinSalary(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.length <= 2) setMinSalary(val);
+                  }}
                   disabled={isSubmitting}
                   className="bg-background/50"
                   min="0"
-                  step="0.1"
+                  max="99"
                 />
                 <span className="text-muted-foreground">-</span>
                 <Input
                   type="number"
                   placeholder="Max (e.g. 6)"
                   value={maxSalary}
-                  onChange={(e) => setMaxSalary(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.length <= 2) setMaxSalary(val);
+                  }}
                   disabled={isSubmitting}
                   className="bg-background/50"
                   min="0"
-                  step="0.1"
+                  max="99"
                 />
               </div>
             </div>

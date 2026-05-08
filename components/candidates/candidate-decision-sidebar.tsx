@@ -126,6 +126,7 @@ interface CandidateDecisionSidebarContentProps {
   candidateDetails?: CandidateDetails | null
   onSuccess?: () => void
   hideSubmit?: boolean
+  numberOfRounds?: number
 }
 
 export interface CandidateDecisionSidebarRef {
@@ -212,6 +213,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
   candidateDetails,
   onSuccess,
   hideSubmit = false,
+  numberOfRounds = 3,
 }, ref) => {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -688,8 +690,22 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     },
   ]
 
-  // Total rounds for numbering (4 editable + 1 read-only call round)
-  const totalRounds = rounds.length + 1
+  // Map NumberOfRounds to which rounds to show
+  // 0: Resume Screening (Always index 0)
+  // 1: HR Round (Index 1)
+  // 2: Tech Interview (Index 2)
+  // 3: Manager Interview (Index 3)
+  const visibleRounds = [rounds[0]] // Always show Resume Screening
+  if (numberOfRounds >= 1) visibleRounds.push(rounds[1]) // HR
+  if (numberOfRounds >= 2) {
+    const techRound = { ...rounds[2] }
+    if (numberOfRounds === 2) techRound.title = "Final"
+    visibleRounds.push(techRound) // Tech or Final
+  }
+  if (numberOfRounds >= 3) visibleRounds.push(rounds[3]) // Manager
+
+  // Total rounds for numbering (visible editable rounds + 1 read-only call round)
+  const totalRounds = visibleRounds.length + 1
 
 // Recursive component to render structured data (objects/arrays) beautifully
 function StructuredValue({ 
@@ -1304,7 +1320,7 @@ function StructuredValue({
             })()}
 
             {/* ── Rounds 3-5: HR, Tech, Manager (editable) ── */}
-            {rounds.slice(1).map((round, i) => {
+            {visibleRounds.slice(1).map((round, i) => {
               const actualIndex = i + 2 // offset by 2 (Resume=0, Call=1, then HR=2, Tech=3, Manager=4)
               const value = formData[round.valueKey] || ""
               const isExpanded = expandedRound === actualIndex

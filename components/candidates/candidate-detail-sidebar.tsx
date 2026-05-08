@@ -87,6 +87,7 @@ interface CandidateDetailSidebarProps {
   onClose: () => void
   campaignName?: string
   onDecisionUpdate?: () => void
+  numberOfRounds?: number
 }
 
 export function CandidateDetailSidebar({
@@ -95,6 +96,7 @@ export function CandidateDetailSidebar({
   onClose,
   campaignName,
   onDecisionUpdate,
+  numberOfRounds = 3,
 }: CandidateDetailSidebarProps) {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("profile")
@@ -194,7 +196,22 @@ export function CandidateDetailSidebar({
       },
     ]
 
-    const stages = rounds.map((r) => {
+    // Map NumberOfRounds to which rounds to show
+    // 0: Resume
+    // 1: Call
+    // 2: HR
+    // 3: Tech
+    // 4: Manager
+    const visibleRounds = [rounds[0], rounds[1]] // Always show Resume and Call
+    if (numberOfRounds >= 1) visibleRounds.push(rounds[2]) // HR
+    if (numberOfRounds >= 2) {
+      const techRound = { ...rounds[3] }
+      if (numberOfRounds === 2) techRound.label = "Final"
+      visibleRounds.push(techRound) // Tech or Final
+    }
+    if (numberOfRounds >= 3) visibleRounds.push(rounds[4]) // Manager
+
+    const stages = visibleRounds.map((r) => {
       // @ts-ignore
       const rawVal = candidate[r.key] || (candidate as any)[r.label + " Decision"]
       const decision = normalizeDecision(rawVal)
@@ -837,6 +854,7 @@ export function CandidateDetailSidebar({
                             candidateEmail={candidate.Email}
                             candidateDetails={candidate}
                             onSuccess={handleDecisionSuccess}
+                            numberOfRounds={numberOfRounds}
                             hideSubmit={true}
                           />
                         ) : (

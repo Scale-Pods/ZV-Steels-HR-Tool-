@@ -129,6 +129,7 @@ interface CampaignAnalytics {
   topHRs: { HR: string; avgScore: string; successRate: string }[]
   avgScorePerHR: { [key: string]: string }
   avgScoreByCity: { [key: string]: string }
+  numberOfRounds?: number
 }
 
 interface CampaignDetailClientProps {
@@ -256,6 +257,35 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
       const rawData = JSON.parse(responseText)
       console.log("[v0] Raw webhook response:", JSON.stringify(rawData).substring(0, 500))
+
+      // ─── Extract Campaign Metadata ───────────────────────────────────────
+      let campaignRounds = rawData.NumberOfRounds || rawData.numberOfRounds || 3
+      
+      // If metadata not in certain campaign response, try fetching from campaigns list
+      if (!rawData.NumberOfRounds && !rawData.numberOfRounds) {
+        try {
+          const campaignsRes = await fetch("/api/webhook-proxy?action=Campaigns", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ UserEmail: userEmail })
+          })
+          if (campaignsRes.ok) {
+            const campaignsData = await campaignsRes.json()
+            let campaignsList: any[] = []
+            if (Array.isArray(campaignsData)) campaignsList = campaignsData
+            else if (campaignsData.data) campaignsList = campaignsData.data.map((item: any) => item.json || item)
+            
+            const currentCampaign = campaignsList.find(c => 
+              String(c.CampaignName || "").toLowerCase() === campaignName.toLowerCase()
+            )
+            if (currentCampaign?.NumberOfRounds) {
+              campaignRounds = Number(currentCampaign.NumberOfRounds)
+            }
+          }
+        } catch (err) {
+          console.warn("[v0] Could not fetch supplemental campaign metadata:", err)
+        }
+      }
 
       const normalizeDecision = (val: any): string => {
         if (!val) return ""
@@ -472,6 +502,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         topHRs,
         avgScorePerHR: {},
         avgScoreByCity,
+        numberOfRounds: campaignRounds,
       })
 
       console.log("[v0] Analytics set with", candidateList.length, "candidates")
@@ -1058,9 +1089,17 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         <TableHead className="text-muted-foreground font-semibold text-center px-1 w-[60px]">Score</TableHead>
                         <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
                         <TableHead className="text-blue-500 font-semibold text-center px-1 w-[80px]">Call</TableHead>
-                        <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
-                        <TableHead className="text-amber-500 font-semibold text-center px-1 w-[80px]">Tech</TableHead>
-                        <TableHead className="text-violet-500 font-semibold text-center px-1 w-[80px]">Final</TableHead>
+                        {(analytics?.numberOfRounds ?? 3) >= 1 && (
+                          <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
+                        )}
+                        {(analytics?.numberOfRounds ?? 3) >= 2 && (
+                          <TableHead className="text-amber-500 font-semibold text-center px-1 w-[80px]">
+                            {(analytics?.numberOfRounds ?? 3) === 2 ? "Final" : "Tech"}
+                          </TableHead>
+                        )}
+                        {(analytics?.numberOfRounds ?? 3) >= 3 && (
+                          <TableHead className="text-violet-500 font-semibold text-center px-1 w-[80px]">Final</TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1137,27 +1176,33 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 value={candidate.CallRound} 
                               />
                             </TableCell>
-                            <TableCell className="text-center px-1">
-                              <DecisionBadge 
-                                candidate={candidate} 
-                                roundKey="HRRound" 
-                                value={candidate.HRRound} 
-                              />
-                            </TableCell>
-                            <TableCell className="text-center px-1">
-                              <DecisionBadge 
-                                candidate={candidate} 
-                                roundKey="TechInterviewRound" 
-                                value={candidate.TechInterviewRound} 
-                              />
-                            </TableCell>
-                            <TableCell className="text-center px-1">
-                              <DecisionBadge 
-                                candidate={candidate} 
-                                roundKey="ManagerInterview" 
-                                value={candidate.ManagerInterview} 
-                              />
-                            </TableCell>
+                            {(analytics?.numberOfRounds ?? 3) >= 1 && (
+                              <TableCell className="text-center px-1">
+                                <DecisionBadge 
+                                  candidate={candidate} 
+                                  roundKey="HRRound" 
+                                  value={candidate.HRRound} 
+                                />
+                              </TableCell>
+                            )}
+                            {(analytics?.numberOfRounds ?? 3) >= 2 && (
+                              <TableCell className="text-center px-1">
+                                <DecisionBadge 
+                                  candidate={candidate} 
+                                  roundKey="TechInterviewRound" 
+                                  value={candidate.TechInterviewRound} 
+                                />
+                              </TableCell>
+                            )}
+                            {(analytics?.numberOfRounds ?? 3) >= 3 && (
+                              <TableCell className="text-center px-1">
+                                <DecisionBadge 
+                                  candidate={candidate} 
+                                  roundKey="ManagerInterview" 
+                                  value={candidate.ManagerInterview} 
+                                />
+                              </TableCell>
+                            )}
                           </TableRow>
                         )
                       })}
@@ -1254,6 +1299,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         }}
         campaignName={campaignName}
         onDecisionUpdate={fetchCampaignData}
+        numberOfRounds={analytics?.numberOfRounds ?? 3}
       />
       <DeleteCampaignDialog
         isOpen={isDeleteDialogOpen}
