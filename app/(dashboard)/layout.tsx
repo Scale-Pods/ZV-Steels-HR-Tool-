@@ -61,7 +61,7 @@ function NavItems() {
 
   return (
     <>
-      <SidebarMenu className="gap-2.5 px-2">
+      <SidebarMenu className="gap-2.5 px-2 group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:items-center">
         {items.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} className="w-full">
@@ -70,7 +70,7 @@ function NavItems() {
                 isActive={pathname === item.href}
                 className={cn(
                   "w-full h-auto py-3.5 px-4 rounded-xl transition-all duration-200",
-                  "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:py-3",
+                  "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:py-3 group-data-[state=collapsed]:w-10! group-data-[state=collapsed]:p-0!",
                   pathname === item.href
                     ? "bg-muted/50 text-foreground"
                     : "hover:bg-muted/30 text-foreground/70 hover:text-foreground",
@@ -145,11 +145,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
     >
       <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
-        <SidebarHeader className="py-8 px-4 group-data-[state=collapsed]:px-0 overflow-hidden">
-          <Link href="/" className="flex flex-col items-center justify-center gap-4 hover:opacity-90 transition-opacity">
+        <SidebarHeader className="py-8 px-4 group-data-[state=collapsed]:px-0 overflow-hidden items-center">
+          <Link href="/" className="flex flex-col items-center justify-center gap-4 hover:opacity-90 transition-opacity w-full">
             {/* ZV Steels Logo - Centered & Bigger */}
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative h-20 w-40 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-10 transition-all">
+            <div className="flex flex-col items-center gap-1.5 w-full">
+              <div className="relative h-20 w-40 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-8 transition-all">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -194,12 +194,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-border/50 p-2">
+        <SidebarFooter className="border-t border-border/50 p-2 group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:items-center">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsReportModalOpen(true)}
-                className="w-full h-11 px-4 hover:bg-destructive/10 text-muted-foreground hover:text-destructive group transition-colors"
+                className="w-full h-11 px-4 hover:bg-destructive/10 text-muted-foreground hover:text-destructive group transition-colors group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-10! group-data-[state=collapsed]:p-0!"
                 tooltip="Report an Issue"
               >
                 <div className="flex items-center gap-4">
