@@ -216,13 +216,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       <SidebarInset className="min-h-svh bg-background flex flex-col">
         <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-          <div className="flex h-16 items-center gap-4 px-8">
+          <div className="flex h-16 items-center gap-2 md:gap-4 px-4 md:px-8">
             <SidebarTrigger className="hover:bg-accent shrink-0 p-2 size-10" />
-            <PageHeader />
+            <div className="flex-1 min-w-0">
+              <PageHeader />
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-4 overflow-auto">
           <PageTransition key={pathname}>
             {children}
           </PageTransition>

@@ -45,18 +45,18 @@ export default function ManageCampaignsPage() {
   ]
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12">
+    <div className="max-w-7xl mx-auto space-y-12">
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Hiring Campaigns</h1>
-            <p className="text-muted-foreground">Manage and track your active recruitment drives.</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Hiring Campaigns</h1>
+            <p className="text-muted-foreground text-sm md:text-base">Manage and track your active recruitment drives.</p>
           </div>
           <Button 
             onClick={() => setShowCreateForm(!showCreateForm)}
             variant={showCreateForm ? "outline" : "default"}
             className={cn(
-              "gap-2 h-10 px-6 font-semibold transition-all active:scale-95 shadow-md",
+              "w-full sm:w-auto gap-2 h-10 px-6 font-semibold transition-all active:scale-95 shadow-md",
               !showCreateForm && "bg-violet-600 hover:bg-violet-700 text-white"
             )}
           >

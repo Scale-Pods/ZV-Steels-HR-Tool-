@@ -443,6 +443,12 @@ export default function CallAnalysisPage() {
                     </div>
                   </th>
                 ))}
+                <th className="px-3 py-3 text-left font-black text-muted-foreground uppercase tracking-widest min-w-[140px] border-r border-border">
+                  <div className="flex items-center gap-2">
+                     <PhoneCall className="size-3 text-muted-foreground/60" />
+                     <span className="text-foreground/80">Call Recording</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -455,7 +461,7 @@ export default function CallAnalysisPage() {
                 </tr>
               ) : !selectedCampaign ? (
                 <tr>
-                  <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
+                  <td colSpan={METRIC_COLUMNS.length + 3} className="py-32 text-center">
                     <Sparkles className="size-10 mx-auto text-primary/30 mb-4 animate-pulse" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Select a campaign to view the data</p>
                     <p className="text-muted-foreground/60 text-[9px] mt-2">Choose a campaign from the dropdown above to start analysis</p>
@@ -463,7 +469,7 @@ export default function CallAnalysisPage() {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
+                  <td colSpan={METRIC_COLUMNS.length + 3} className="py-32 text-center">
                     <PhoneCall className="size-8 mx-auto text-muted-foreground/30 mb-4" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px]">No matching records found</p>
                   </td>
@@ -521,6 +527,19 @@ export default function CallAnalysisPage() {
                           </td>
                         )
                       })}
+                      <td className="px-3 py-2 border-r border-border min-w-[140px]" onClick={e => e.stopPropagation()}>
+                        {(() => {
+                          const recordingUrl = c["Call Recording"] || c.CallRecording || c.call_recording || c.Recording || c.recording;
+                          if (!recordingUrl) return <div className="text-muted-foreground/30 font-mono text-center">—</div>;
+                          return (
+                            <audio 
+                              controls 
+                              src={recordingUrl}
+                              className="h-8 w-full max-w-[140px] [&::-webkit-media-controls-panel]:bg-muted [&::-webkit-media-controls-panel]:rounded-md"
+                            />
+                          );
+                        })()}
+                      </td>
                     </tr>
                   )
                 })

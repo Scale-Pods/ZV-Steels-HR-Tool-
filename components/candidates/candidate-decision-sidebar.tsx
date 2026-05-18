@@ -779,21 +779,21 @@ function StructuredValue({
               }
 
               return (
-                <div key={i} className="flex flex-col gap-2.5 p-4 rounded-xl bg-card border border-border group/qa hover:shadow-md transition-all shadow-sm">
+                <div key={i} className="flex flex-col gap-2.5 p-4 rounded-xl bg-slate-900/40 border border-slate-700/50 group/qa hover:shadow-md transition-all shadow-sm overflow-hidden">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-1 min-w-0">
                       <div className="size-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-500/20">
                         <span className="text-emerald-500/80 text-[10px] font-bold">Q</span>
                       </div>
-                      <span className="text-foreground text-sm font-semibold leading-relaxed">
+                      <span className="text-slate-200 text-sm font-semibold leading-relaxed break-words">
                         {q}
                       </span>
                     </div>
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider border shrink-0 h-fit transition-all",
-                      isPositive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]" :
-                      isNegative ? "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.1)]" :
-                      "bg-primary/10 text-primary border-primary/20"
+                      "text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider border h-fit transition-all max-w-[140px] whitespace-normal text-right leading-tight",
+                      isPositive ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]" :
+                      isNegative ? "bg-red-500/15 text-red-400 border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.1)]" :
+                      "bg-slate-700/50 text-slate-300 border-slate-600/50"
                     )}>
                       {a}
                     </span>
@@ -838,16 +838,16 @@ function StructuredValue({
               const isNegative = a.toUpperCase() === "NO"
 
               return (
-                <div key={i} className="flex flex-col gap-1.5 p-3 rounded-lg bg-muted border border-border group/qa hover:shadow-sm transition-all shadow-sm">
-                  <span className="text-muted-foreground text-[11px] font-medium leading-relaxed group-hover/qa:text-foreground">
+                <div key={i} className="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-900/40 border border-slate-700/50 group/qa hover:shadow-sm transition-all shadow-sm">
+                  <span className="text-slate-400 text-[11px] font-medium leading-relaxed group-hover/qa:text-slate-200">
                     {q}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border",
-                      isPositive ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
-                      isNegative ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" :
-                      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                      "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border whitespace-normal max-w-full leading-tight",
+                      isPositive ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                      isNegative ? "bg-red-500/15 text-red-400 border-red-500/30" :
+                      "bg-slate-700/50 text-slate-300 border-slate-600/50"
                     )}>
                       {a}
                     </span>
@@ -935,7 +935,7 @@ function StructuredValue({
             <span className="text-emerald-400 text-[10px] uppercase font-black tracking-widest">{displayLabel}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
-          <div className="bg-muted/30 rounded-xl p-4 border border-border shadow-inner group/card hover:border-primary/30 transition-colors">
+          <div className="bg-slate-900/60 rounded-xl px-2 py-3 border border-slate-700/50 shadow-inner group/card hover:border-emerald-500/30 transition-colors">
             <StructuredValue value={value} />
           </div>
         </div>
@@ -987,9 +987,6 @@ function StructuredValue({
         </Label>
 
         <div className="relative">
-          {/* Vertical connector line */}
-          <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-border z-0" />
-
           <div className="space-y-1.5 relative z-10">
 
             {/* ── Round 1: Resume Screening (editable) ── */}
@@ -1036,7 +1033,7 @@ function StructuredValue({
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
+                    <div className="px-2 pb-4 pt-1 space-y-3 border-t border-border">
                       <div className={cn("h-0.5 w-12 rounded-full", round.barColor, "opacity-60")} />
                       <div className="space-y-2">
                         <Label className="text-muted-foreground text-xs">Decision</Label>
@@ -1122,7 +1119,7 @@ function StructuredValue({
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
+                    <div className="px-2 pb-4 pt-1 space-y-3 border-t border-border">
                       <div className="h-0.5 w-12 rounded-full bg-cyan-500 opacity-60" />
 
                       {/* Manual Decision Override */}
@@ -1182,7 +1179,7 @@ function StructuredValue({
                             )}
 
                              {/* Automated call results - only shows call-specific data */}
-                             <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border shadow-inner">
+                             <div className="space-y-3 bg-muted/30 px-2 py-3 rounded-xl border border-border shadow-inner">
                                {renderCallDataField("Called By", callRoundData.calledBy || callRoundData.CalledBy || callRoundData["Called By"])}
                                {renderCallDataField("Call Date", callRoundData.callDate || callRoundData.CallDate || callRoundData["Call Date"])}
                                {renderCallDataField("Duration", callRoundData.duration || callRoundData.Duration)}
@@ -1228,54 +1225,47 @@ function StructuredValue({
                                      )}
                                    </div>
 
-                                   <div className="flex items-center gap-1.5 overflow-x-auto pb-2 hide-scrollbar">
-                                     {followup.stages.map((stage, index) => {
-                                       const isCompleted = stage.isCompleted
-                                       
-                                       let bgClass = "bg-muted/50 border-border"
-                                       let iconBg = "bg-muted"
-                                       let iconColor = "text-muted-foreground"
-                                       let textClass = "text-muted-foreground/60"
-                                       let connector = "bg-border"
-                                       
-                                       if (isCompleted) {
-                                         bgClass = stage.classes.pastBg.replace('from-blue-500/20', 'from-blue-500/10') // subtle
-                                         iconBg = stage.classes.pastIconBg
-                                         iconColor = "text-white"
-                                         textClass = stage.classes.pastText
-                                         connector = stage.classes.connector
-                                       }
-                                       
-                                       const Icon = stage.icon
+                                    <div className="grid grid-cols-5 gap-1.5">
+                                      {followup.stages.map((stage, index) => {
+                                        const isCompleted = stage.isCompleted
+                                        
+                                        let bgClass = "bg-muted/50 border-border"
+                                        let iconBg = "bg-muted"
+                                        let iconColor = "text-muted-foreground"
+                                        let textClass = "text-muted-foreground/60"
+                                        
+                                        if (isCompleted) {
+                                          bgClass = stage.classes.pastBg.replace('from-blue-500/20', 'from-blue-500/10') // subtle
+                                          iconBg = stage.classes.pastIconBg
+                                          iconColor = "text-white"
+                                          textClass = stage.classes.pastText
+                                        }
+                                        
+                                        const Icon = stage.icon
 
-                                       return (
-                                         <div key={stage.key} className="flex items-center shrink-0">
-                                           <div className={cn(
-                                             "flex flex-col items-center justify-center gap-1 p-2 rounded-xl border w-[72px] transition-all",
-                                             bgClass
-                                           )}>
-                                             <div className={cn("size-6 rounded-full flex items-center justify-center shadow-sm", iconBg)}>
-                                               <Icon className={cn("size-3", iconColor)} />
-                                             </div>
-                                             <div className="text-center w-full px-0.5">
-                                               <span className={cn("text-[9px] font-bold leading-tight block truncate", textClass)}>
-                                                 {stage.label}
-                                               </span>
-                                               <p className="text-[8px] text-muted-foreground mt-0.5 font-medium">
-                                                 {isCompleted ? String(stage.value) : "—"}
-                                               </p>
-                                             </div>
-                                           </div>
-                                           
-                                           {index < followup.stages.length - 1 && (
-                                             <div className="flex items-center px-0.5">
-                                               <div className={cn("h-0.5 w-2 rounded-full", connector)} />
-                                             </div>
-                                           )}
-                                         </div>
-                                       )
-                                     })}
-                                   </div>
+                                        return (
+                                          <div 
+                                            key={stage.key} 
+                                            className={cn(
+                                              "flex flex-col items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl border transition-all text-center h-full",
+                                              bgClass
+                                            )}
+                                          >
+                                            <div className={cn("size-7 rounded-full flex items-center justify-center shadow-sm shrink-0", iconBg)}>
+                                              <Icon className={cn("size-3.5", iconColor)} />
+                                            </div>
+                                            <div className="space-y-0.5 min-w-0 w-full">
+                                              <span className={cn("text-[8px] sm:text-[9px] font-black leading-tight block truncate uppercase tracking-tighter", textClass)}>
+                                                {stage.label}
+                                              </span>
+                                              <p className="text-[7px] sm:text-[8px] text-muted-foreground font-bold truncate">
+                                                {isCompleted ? String(stage.value) : "—"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
                                  </div>
                                )}
                              </div>

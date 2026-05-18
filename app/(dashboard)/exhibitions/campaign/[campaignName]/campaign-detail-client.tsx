@@ -30,6 +30,12 @@ import {
   MoreVertical,
   ExternalLink,
   Trash2,
+  Briefcase,
+  MapPin,
+  Target,
+  DollarSign,
+  MessageSquare,
+  FileText,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -110,6 +116,7 @@ interface Candidate {
   HRMeetingType?: string
   TechMeetingType?: string
   ManagerMeetingType?: string
+  CallLogs?: string
 }
 
 interface CampaignAnalytics {
@@ -157,6 +164,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"score" | "city" | "hr">("score")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [viewingMediaFor, setViewingMediaFor] = useState<{name: string, data: string, logs: string} | null>(null)
+  const [mediaTab, setMediaTab] = useState<'script' | 'intelligence'>('script')
   
   useEffect(() => {
     setIsMounted(true)
@@ -366,6 +375,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         HRMeetingType: c["HR Meeting Type"] || c.HRMeetingType || "",
         TechMeetingType: c["Tech Meeting Type"] || c.TechMeetingType || "",
         ManagerMeetingType: c["Manager Meeting Type"] || c.ManagerMeetingType || "",
+        CallLogs: c["Call Logs"] || c.CallLogs || c.call_logs || "",
       })
 
       // ─── Extract candidate list from any known response envelope ───────────
@@ -820,112 +830,114 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const avgScoreByCity = analytics?.avgScoreByCity || {}
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6">
+      <div className="w-full max-w-[98%] mx-auto space-y-6">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-4 md:p-8">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-violet-500/5" />
           <div className="relative space-y-4">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="size-5" />
-                </Button>
-              </Link>
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-foreground">
-                  {campaignName}
-                </h1>
-                <p className="text-muted-foreground mt-1">Campaign Analytics & Candidate Management</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0">
+                    <ArrowLeft className="size-5" />
+                  </Button>
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">
+                    {campaignName}
+                  </h1>
+                  <p className="text-muted-foreground text-sm mt-1 truncate">Analytics & Management</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
                 <Button
                   onClick={handleRefresh}
                   variant="outline"
-                  className="gap-2 bg-muted/50 border-border hover:bg-muted"
+                  className="flex-1 sm:flex-none gap-2 bg-muted/50 border-border hover:bg-muted text-xs md:text-sm h-9"
                 >
-                  <RefreshCw className="size-4" />
-                  Refresh Data
+                  <RefreshCw className="size-3.5" />
+                  Refresh
                 </Button>
                 <Button
                   onClick={() => setIsDeleteDialogOpen(true)}
                   variant="destructive"
-                  className="gap-2"
+                  className="flex-1 sm:flex-none gap-2 text-xs md:text-sm h-9"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-3.5" />
                   Delete
                 </Button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-              <div className="p-4 rounded-lg bg-card border border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
                     <Users className="size-5 text-emerald-500" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{totalCandidates}</p>
-                    <p className="text-xs text-muted-foreground">Total Candidates</p>
+                  <div className="min-w-0">
+                    <p className="text-xl md:text-2xl font-bold text-foreground truncate">{totalCandidates}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider font-semibold">Candidates</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-card border border-border">
+              <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-violet-500/10">
+                  <div className="p-2 rounded-lg bg-violet-500/10 shrink-0">
                     <TrendingUp className="size-5 text-violet-500" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{avgScore}</p>
-                    <p className="text-xs text-muted-foreground">Average Score</p>
+                  <div className="min-w-0">
+                    <p className="text-xl md:text-2xl font-bold text-foreground truncate">{avgScore}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider font-semibold">Avg Score</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-card border border-border">
+              <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
+                  <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
                     <CheckCircle2 className="size-5 text-blue-500" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-blue-500">{passRate}%</p>
-                    <p className="text-xs text-muted-foreground">Pass Rate</p>
+                  <div className="min-w-0">
+                    <p className="text-xl md:text-2xl font-bold text-blue-500 truncate">{passRate}%</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider font-semibold">Pass Rate</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-card border border-border">
+              <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
+                  <div className="p-2 rounded-lg bg-amber-500/10 shrink-0">
                     <Clock className="size-5 text-amber-500" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-amber-500">{holdRate}%</p>
-                    <p className="text-xs text-muted-foreground">Pending</p>
+                  <div className="min-w-0">
+                    <p className="text-xl md:text-2xl font-bold text-amber-500 truncate">{holdRate}%</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider font-semibold">Pending</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground mb-1">Median Score</p>
-                <p className="text-lg font-bold text-violet-500">{medianScore}</p>
+                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-tighter font-bold">Median</p>
+                <p className="text-base md:text-lg font-bold text-violet-500">{medianScore}</p>
               </div>
 
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground mb-1">Std Deviation</p>
-                <p className="text-lg font-bold text-blue-500">{scoreStdDeviation}</p>
+                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-tighter font-bold">Std Dev</p>
+                <p className="text-base md:text-lg font-bold text-blue-500">{scoreStdDeviation}</p>
               </div>
 
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground mb-1">TI Avg Score</p>
-                <p className="text-lg font-bold text-emerald-500">{tiAvgScore}</p>
+                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-tighter font-bold">TI Avg</p>
+                <p className="text-base md:text-lg font-bold text-emerald-500">{tiAvgScore}</p>
               </div>
 
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground mb-1">TI Conversion</p>
-                <p className="text-lg font-bold text-amber-500">{tiConversionRate}%</p>
+                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-tighter font-bold">TI Conv</p>
+                <p className="text-base md:text-lg font-bold text-amber-500">{tiConversionRate}%</p>
               </div>
             </div>
           </div>
@@ -1079,14 +1091,16 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
           <CardContent>
             {paginatedCandidates.length > 0 ? (
               <>
-                <div className="rounded-lg border border-border overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block rounded-lg border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50 border-border">
-                        <TableHead className="text-muted-foreground font-semibold px-2 w-[140px]">Candidate</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold px-2 w-[120px]">Contact</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold px-2 flex-grow min-w-[150px]">Key Insights</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold text-center px-1 w-[60px]">Score</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-4 w-[200px]">Candidate</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-4 w-[180px]">Contact</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-4 w-[120px]">Media</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold px-4 flex-grow min-w-[200px]">Key Insights</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold text-center px-2 w-[80px]">Score</TableHead>
                         <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
                         <TableHead className="text-blue-500 font-semibold text-center px-1 w-[80px]">Call</TableHead>
                         {(analytics?.numberOfRounds ?? 3) >= 1 && (
@@ -1113,31 +1127,31 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
                         const hasInsights = candidate.Strengths || candidate.Gaps || candidate.FitAnalysis
                         const insightPreview = candidate.Strengths
-                          ? candidate.Strengths.substring(0, 80) + (candidate.Strengths.length > 80 ? "..." : "")
+                          ? candidate.Strengths.substring(0, 100) + (candidate.Strengths.length > 100 ? "..." : "")
                           : candidate.FitAnalysis
-                            ? candidate.FitAnalysis.substring(0, 80) + (candidate.FitAnalysis.length > 80 ? "..." : "")
+                            ? candidate.FitAnalysis.substring(0, 100) + (candidate.FitAnalysis.length > 100 ? "..." : "")
                             : null
 
                         return (
                           <TableRow
                             key={candidate.CandidateID || index}
-                            className="border-border hover:bg-muted transition-colors cursor-pointer"
+                            className="border-border hover:bg-muted transition-colors cursor-pointer group"
                             onClick={() => handleCandidateClick(candidate)}
                           >
-                            <TableCell className="font-medium px-2">
-                              <div className="flex items-center gap-2">
-                                <div className="size-8 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            <TableCell className="font-medium px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                                   {displayName.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                <p className="text-foreground font-bold truncate group-hover:text-primary transition-colors">{displayName}</p>
+                                  <p className="text-foreground font-bold truncate group-hover:text-primary transition-colors">{displayName}</p>
                                   <p className="text-xs text-slate-400 truncate">{candidate.City || "Location N/A"}</p>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="px-2">
+                            <TableCell className="px-4">
                               <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{candidate.Email}</p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[170px]">{candidate.Email}</p>
                                 {candidate.PhoneNumber && (
                                   <p className="text-xs text-slate-500 flex items-center gap-1">
                                     <Phone className="size-3" />
@@ -1146,7 +1160,33 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="px-2 w-[25%] max-w-[200px]">
+                            <TableCell className="px-4">
+                              <div className="flex flex-col gap-1.5">
+                                {candidate.CallRecording && (
+                                  <a 
+                                    href={candidate.CallRecording} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    onClick={e => e.stopPropagation()}
+                                    className="inline-flex w-fit items-center gap-1.5 text-[10px] bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 font-bold uppercase tracking-wider transition-colors"
+                                  >
+                                    <PhoneCall className="size-3" /> Audio
+                                  </a>
+                                )}
+                                {candidate.Data && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingMediaFor({ name: displayName, data: candidate.Data!, logs: candidate.CallLogs || "" }); setMediaTab('script') }}
+                                    className="inline-flex w-fit items-center gap-1.5 text-[10px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 px-2 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider transition-colors"
+                                  >
+                                    <ExternalLink className="size-3" /> Script
+                                  </button>
+                                )}
+                                {(!candidate.CallRecording && !candidate.Data) && (
+                                  <span className="text-xs text-muted-foreground/40 italic">—</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-4 w-[30%] max-w-[250px]">
                               {hasInsights ? (
                                 <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2" title={insightPreview || ""}>
                                   {insightPreview || (
@@ -1157,8 +1197,8 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 <span className="text-xs text-muted-foreground/40 italic">No insights available</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center px-1">
-                              <span className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                            <TableCell className="text-center px-2">
+                              <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
                             </TableCell>
@@ -1208,6 +1248,89 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                       })}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {paginatedCandidates.map((candidate, index) => {
+                    const displayName =
+                      candidate.Name && candidate.Name.trim() !== ""
+                        ? candidate.Name
+                        : candidate.Email
+                          ? candidate.Email.split("@")[0]
+                          : "Unnamed Candidate"
+                    
+                    return (
+                      <div
+                        key={candidate.CandidateID || index}
+                        onClick={() => handleCandidateClick(candidate)}
+                        className="bg-muted/30 border border-border rounded-xl p-4 space-y-4 active:scale-[0.98] transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-foreground truncate">{displayName}</p>
+                              <p className="text-xs text-slate-400 truncate">{candidate.City || "Location N/A"}</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                              {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Score</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-3 border-y border-border/50">
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold">Email</p>
+                            <p className="text-xs text-foreground truncate">{candidate.Email}</p>
+                          </div>
+                          {candidate.PhoneNumber && (
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold">Phone</p>
+                              <p className="text-xs text-foreground">{candidate.PhoneNumber}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold">Pipeline Status</p>
+                          <div className="flex flex-wrap gap-2">
+                            <div className="space-y-1">
+                              <p className="text-[8px] text-slate-500 uppercase">Resume</p>
+                              <DecisionBadge candidate={candidate} roundKey="ResumeScreening" value={candidate.ResumeScreening} />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[8px] text-slate-500 uppercase">Call</p>
+                              <DecisionBadge candidate={candidate} roundKey="CallRound" value={candidate.CallRound} />
+                            </div>
+                            {(analytics?.numberOfRounds ?? 3) >= 1 && (
+                              <div className="space-y-1">
+                                <p className="text-[8px] text-slate-500 uppercase">HR</p>
+                                <DecisionBadge candidate={candidate} roundKey="HRRound" value={candidate.HRRound} />
+                              </div>
+                            )}
+                            {(analytics?.numberOfRounds ?? 3) >= 2 && (
+                              <div className="space-y-1">
+                                <p className="text-[8px] text-slate-500 uppercase">{(analytics?.numberOfRounds ?? 3) === 2 ? "Final" : "Tech"}</p>
+                                <DecisionBadge candidate={candidate} roundKey="TechInterviewRound" value={candidate.TechInterviewRound} />
+                              </div>
+                            )}
+                            {(analytics?.numberOfRounds ?? 3) >= 3 && (
+                              <div className="space-y-1">
+                                <p className="text-[8px] text-slate-500 uppercase">Final</p>
+                                <DecisionBadge candidate={candidate} roundKey="ManagerInterview" value={candidate.ManagerInterview} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {totalPages > 1 && (
@@ -1307,6 +1430,203 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         onConfirm={handleDeleteCampaign}
         campaignName={campaignName}
       />
+      {viewingMediaFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setViewingMediaFor(null)}>
+          <div className="bg-card border border-border p-6 rounded-xl shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Call Session: {viewingMediaFor.name}</h3>
+                <p className="text-xs text-muted-foreground mt-1">Review candidate transcript and extracted call logs</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setViewingMediaFor(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <div className="flex bg-muted/60 p-1 rounded-lg w-fit mb-5 border border-border">
+              <button
+                onClick={() => setMediaTab('script')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all duration-150", 
+                  mediaTab === 'script' 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Raw Transcript
+              </button>
+              <button
+                onClick={() => setMediaTab('intelligence')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all duration-150", 
+                  mediaTab === 'intelligence' 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Extracted Intelligence
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 rounded-xl border border-border bg-card/40 backdrop-blur-sm">
+              {mediaTab === 'script' ? (
+                <ChatTranscript data={viewingMediaFor.data} candidateName={viewingMediaFor.name} />
+              ) : (
+                <ParsedIntelligence logs={viewingMediaFor.logs} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function ChatTranscript({ data, candidateName }: { data: string, candidateName: string }) {
+  const messages: { role: 'ai' | 'user', content: string }[] = [];
+  const lines = data.split('\n');
+  let currentRole: 'ai' | 'user' | null = null;
+  let currentContent = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('Q: ')) {
+      if (currentRole && currentContent) {
+        messages.push({ role: currentRole, content: currentContent.trim() });
+      }
+      currentRole = 'ai';
+      currentContent = line.substring(3) + '\n';
+    } else if (line.startsWith('A: ')) {
+      if (currentRole && currentContent) {
+        messages.push({ role: currentRole, content: currentContent.trim() });
+      }
+      currentRole = 'user';
+      currentContent = line.substring(3) + '\n';
+    } else {
+      if (currentRole) {
+        currentContent += line + '\n';
+      } else {
+        currentContent += line + '\n';
+      }
+    }
+  }
+  if (currentRole && currentContent) {
+    messages.push({ role: currentRole, content: currentContent.trim() });
+  } else if (!currentRole && currentContent.trim()) {
+    return <div className="whitespace-pre-wrap font-mono text-sm">{data}</div>;
+  }
+
+  if (messages.length === 0) {
+    return <div className="whitespace-pre-wrap font-mono text-sm">{data}</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {messages.map((msg, idx) => (
+        <div key={idx} className={cn("flex w-full", msg.role === 'user' ? "justify-end" : "justify-start")}>
+          <div className={cn("flex flex-col gap-1 max-w-[85%]", msg.role === 'user' ? "items-end" : "items-start")}>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">
+              {msg.role === 'user' ? candidateName : "AI Recruiter"}
+            </span>
+            <div className={cn(
+              "px-4 py-2.5 rounded-2xl text-sm shadow-sm whitespace-pre-wrap",
+              msg.role === 'user' 
+                ? "bg-primary text-primary-foreground rounded-tr-sm" 
+                : "bg-muted border border-border text-foreground rounded-tl-sm"
+            )}>
+              {msg.content}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ParsedIntelligence({ logs }: { logs: string }) {
+  const LABEL_TO_KEY: Record<string, string> = {
+    "experience": "experience",
+    "responsibility fit": "responsibilityfit",
+    "responsibilityfit": "responsibilityfit",
+    "location": "location",
+    "targets": "targets",
+    "notice period": "noticeperiod",
+    "noticeperiod": "noticeperiod",
+    "availability": "availability",
+    "salary": "salary",
+    "salary expectation": "salary",
+    "interview": "interview"
+  };
+
+  const METRIC_COLUMNS = [
+    { key: "experience",        label: "Experience",         icon: Briefcase },
+    { key: "responsibilityfit", label: "Responsibility Fit", icon: CheckCircle2 },
+    { key: "location",          label: "Location",           icon: MapPin },
+    { key: "targets",           label: "Targets",            icon: Target },
+    { key: "noticeperiod",      label: "Notice Period",      icon: Clock },
+    { key: "availability",      label: "Availability",       icon: Clock },
+    { key: "salary",            label: "Salary",             icon: DollarSign },
+    { key: "interview",         label: "Interview",          icon: MessageSquare }
+  ];
+
+  const parseCallLogs = (raw: string): Record<string, string> => {
+    const result: Record<string, string> = {};
+    if (!raw) return result;
+    const str = String(raw);
+
+    const lines = str.split("\n");
+    for (const line of lines) {
+      const colonIndex = line.indexOf(":");
+      if (colonIndex > 0) {
+        const rawLabel = line.slice(0, colonIndex).trim().toLowerCase();
+        const content = line.slice(colonIndex + 1).trim();
+        const internalKey = LABEL_TO_KEY[rawLabel];
+        if (internalKey && content) {
+          result[internalKey] = content;
+        }
+      }
+    }
+
+    if (Object.keys(result).length === 0) {
+      const labelsPattern = Object.keys(LABEL_TO_KEY).join("|");
+      const regex = new RegExp(`(${labelsPattern})\\s*:\\s*([^\\n]+)`, "gi");
+      let match;
+      while ((match = regex.exec(str)) !== null) {
+        const internalKey = LABEL_TO_KEY[match[1].toLowerCase()];
+        if (internalKey) result[internalKey] = match[2].trim();
+      }
+    }
+
+    return result;
+  };
+
+  const metrics = parseCallLogs(logs);
+
+  if (Object.keys(metrics).length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <FileText className="size-12 mb-4 opacity-20" />
+        <p className="text-sm font-semibold">No intelligence metrics extracted</p>
+        <p className="text-xs opacity-60 mt-1">This candidate call record may not contain formatted call logs.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {METRIC_COLUMNS.map((col) => {
+        const val = metrics[col.key];
+        if (!val) return null;
+        return (
+          <div key={col.key} className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col gap-2 transition-all hover:bg-muted/40">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <col.icon className="size-4 text-emerald-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">{col.label}</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground leading-relaxed">{val}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

@@ -59,11 +59,11 @@ export default function LandingPage() {
             : "border-transparent bg-transparent"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-all duration-300">
-            <div className="flex flex-col items-center gap-1">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6 py-4">
+          <Link href="/" className="flex items-center gap-1.5 md:gap-3 hover:opacity-90 transition-all duration-300 scale-90 md:scale-100 origin-left">
+            <div className="flex flex-col items-center gap-0.5 md:gap-1">
               {/* ZV Steels Logo Container */}
-              <div className="relative h-9 w-24 overflow-hidden">
+              <div className="relative h-7 w-20 md:h-9 md:w-24 overflow-hidden">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -72,20 +72,20 @@ export default function LandingPage() {
                   priority
                 />
               </div>
-              <span className="text-[7px] font-bold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">
+              <span className="text-[5px] md:text-[7px] font-bold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">
                 ZV Steels Pvt. Ltd.
               </span>
             </div>
 
             {/* Tight Vertical Separator */}
-            <div className="h-8 w-px bg-border/20" />
+            <div className="h-6 md:h-8 w-px bg-border/20" />
 
             {/* ScalePods Branding */}
             <div className="flex flex-col items-center justify-center pt-0">
-              <span className="text-[6px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 leading-none mb-1 text-center">
+              <span className="text-[5px] md:text-[6px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 leading-none mb-1 text-center">
                 Powered By
               </span>
-              <div className="relative h-7 w-24">
+              <div className="relative h-5 w-18 md:h-7 md:w-24">
                 <Image
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"
@@ -95,14 +95,11 @@ export default function LandingPage() {
               </div>
             </div>
           </Link>
-          <nav className="hidden gap-8 text-sm md:flex items-center">
-            {/* Nav items removed */}
-          </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <Link href="/sign-in">
               <Button 
                 size="sm" 
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 rounded-lg"
+                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold px-4 md:px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 rounded-lg text-xs md:text-sm"
               >
                 Sign In
               </Button>
@@ -111,7 +108,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden pt-20">
+      <section className="relative overflow-hidden pt-16 md:pt-20">
         <div className="absolute inset-0 -z-10">
           <DotGrid
             dotSize={4}
@@ -128,13 +125,13 @@ export default function LandingPage() {
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/70 to-background -z-10" />
 
-        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:py-40">
+        <div className="mx-auto max-w-7xl px-6 py-16 md:py-24 sm:py-32 lg:py-40">
           <div className="mx-auto max-w-4xl text-center">
-            <Badge className="mb-6 bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/40 text-sm px-5 py-2 shadow-lg shadow-purple-500/5 dark:shadow-purple-500/20 backdrop-blur-sm">
-              <Sparkles className="h-4 w-4 mr-2 inline animate-pulse text-purple-500 dark:text-purple-400" />
+            <Badge className="mb-6 bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/40 text-[10px] md:text-sm px-3 md:px-5 py-1 md:py-2 shadow-lg shadow-purple-500/5 dark:shadow-purple-500/20 backdrop-blur-sm">
+              <Sparkles className="h-3 w-3 md:h-4 md:w-4 mr-2 inline animate-pulse text-purple-500 dark:text-purple-400" />
               AI-Powered HR Pipeline Platform
             </Badge>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-foreground leading-tight drop-shadow-sm">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-foreground leading-tight drop-shadow-sm">
               Transform Your Recruitment Workflow
             </h1>
             <p className="text-xl sm:text-2xl text-foreground/80 leading-relaxed mb-12 max-w-3xl mx-auto drop-shadow-sm">

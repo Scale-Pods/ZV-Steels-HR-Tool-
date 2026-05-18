@@ -383,7 +383,7 @@ export function CandidateDetailSidebar({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[700px] bg-gradient-to-br from-slate-900 to-slate-800 border-l border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
+            className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[700px] xl:w-[800px] bg-gradient-to-br from-slate-900 to-slate-800 border-l border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
           >
             {candidate && (
               <div className="space-y-0">
@@ -398,7 +398,7 @@ export function CandidateDetailSidebar({
                     { colors: { active: "from-fuchsia-500 to-pink-600", glow: "shadow-fuchsia-500/40", text: "text-fuchsia-300", bar: "bg-fuchsia-500", pill: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30" } },
                   ]
                   return (
-                    <div className="sticky top-0 z-20 bg-linear-to-b from-slate-900 via-slate-900 to-slate-900/95 border-b border-slate-700/60 px-6 pt-5 pb-4 shadow-xl shadow-slate-900/60">
+                    <div className="sticky top-0 z-20 bg-linear-to-b from-slate-900 via-slate-900 to-slate-900/95 border-b border-slate-700/60 px-4 pt-5 pb-4 shadow-xl shadow-slate-900/60">
                       {/* Close button row */}
                       <div className="flex items-center justify-between mb-4">
                         <div>
@@ -521,7 +521,7 @@ export function CandidateDetailSidebar({
                   )
                 })()}
 
-                <div className="p-6 space-y-6">
+                <div className="px-4 py-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4 pb-4 border-b border-slate-700/50">
                   <div className="size-14 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0">
@@ -718,6 +718,21 @@ export function CandidateDetailSidebar({
                     )}
                   </TabsContent>
                     <TabsContent value="call-logs" className="space-y-4 mt-4">
+                      {(() => {
+                        const recordingUrl = candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording;
+                        if (!recordingUrl) return null;
+                        return (
+                          <Card className="bg-slate-800/50 border-slate-700/50">
+                            <CardContent className="p-4 space-y-3">
+                              <h3 className="font-semibold text-white flex items-center gap-2">
+                                <Phone className="size-4 text-emerald-400" />
+                                Call Recording
+                              </h3>
+                              <audio controls src={recordingUrl} className="w-full [&::-webkit-media-controls-panel]:bg-slate-700 [&::-webkit-media-controls-panel]:rounded-md" />
+                            </CardContent>
+                          </Card>
+                        );
+                      })()}
                       {Object.keys(callMetrics).length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {METRIC_COLUMNS.map((col) => {
@@ -845,26 +860,24 @@ export function CandidateDetailSidebar({
                   </TabsContent>
 
                   <TabsContent value="decision" className="mt-4">
-                    <Card className="bg-slate-800/50 border-slate-700/50">
-                      <CardContent className="p-6">
-                        {campaignName ? (
-                          <CandidateDecisionSidebarContent
-                            ref={decisionRef}
-                            campaignName={campaignName}
-                            candidateEmail={candidate.Email}
-                            candidateDetails={candidate}
-                            onSuccess={handleDecisionSuccess}
-                            numberOfRounds={numberOfRounds}
-                            hideSubmit={true}
-                          />
-                        ) : (
-                          <div className="text-center py-8 text-slate-400">
-                            <AlertCircle className="size-12 mx-auto mb-4 opacity-50" />
-                            <p>Campaign information not available</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    {campaignName ? (
+                      <CandidateDecisionSidebarContent
+                        ref={decisionRef}
+                        campaignName={campaignName}
+                        candidateEmail={candidate.Email}
+                        candidateDetails={candidate}
+                        onSuccess={handleDecisionSuccess}
+                        numberOfRounds={numberOfRounds}
+                        hideSubmit={true}
+                      />
+                    ) : (
+                      <Card className="bg-slate-800/50 border-slate-700/50">
+                        <CardContent className="p-6 text-center py-8 text-slate-400">
+                          <AlertCircle className="size-12 mx-auto mb-4 opacity-50" />
+                          <p>Campaign information not available</p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </TabsContent>
                 </Tabs>
 

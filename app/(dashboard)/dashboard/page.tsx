@@ -793,29 +793,29 @@ export default function DashboardPage() {
         <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm p-8">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-violet-500/5" />
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
+            <div className="space-y-3 w-full lg:w-auto">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
                 {greeting}
               </h1>
-              <p className="text-muted-foreground text-lg font-medium">This is your HR analytics dashboard</p>
-              <div className="flex items-center gap-4 pt-2">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary border border-border">
+              <p className="text-muted-foreground text-base md:text-lg font-medium">This is your HR analytics dashboard</p>
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-2">
+                <div className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-secondary border border-border">
                   <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-sm text-foreground font-semibold">Live Data</span>
+                  <span className="text-xs md:text-sm text-foreground font-semibold">Live Data</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary border border-border">
+                <div className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-secondary border border-border">
                   <Building2 className="size-4 text-primary" />
-                  <span className="text-sm text-foreground font-semibold">{activeCampaigns} Active Campaigns</span>
+                  <span className="text-xs md:text-sm text-foreground font-semibold">{activeCampaigns} Active Campaigns</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
               <Select
                 value={selectedCampaign}
                 onValueChange={setSelectedCampaign}
                 onOpenChange={handleCampaignDropdownOpen}
               >
-                <SelectTrigger className="w-[240px] bg-card border-border text-foreground hover:bg-muted transition-colors">
+                <SelectTrigger className="w-full sm:w-[240px] bg-card border-border text-foreground hover:bg-muted transition-colors">
                   <SelectValue placeholder={loadingCampaigns ? "Loading..." : "Select Campaign"}>
                     {selectedCampaign === "all"
                       ? "Select campaign for analytics"
@@ -844,8 +844,8 @@ export default function DashboardPage() {
                   )}
                 </SelectContent>
               </Select>
-              <Link href="/manage-campaigns">
-                <Button className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+              <Link href="/manage-campaigns" className="w-full sm:w-auto">
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
                   Create Campaign
                 </Button>
               </Link>

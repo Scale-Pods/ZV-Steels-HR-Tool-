@@ -37,11 +37,11 @@ export function PageHeader() {
   const title = titleForPath(pathname)
 
   return (
-    <div className="flex w-full items-center justify-between px-4 h-16">
-      <h1 className="text-xl font-bold tracking-tight text-foreground">
+    <div className="flex w-full items-center justify-between px-0 md:px-4 h-16 gap-2">
+      <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground truncate">
         {title}
       </h1>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         <ThemeToggle />
         <UserNav />
       </div>
