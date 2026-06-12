@@ -623,7 +623,7 @@ export function CandidateDetailSidebar({
 
                 {/* Tabs — Premium segmented control */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-5 bg-muted/60 border border-border p-1 rounded-2xl h-auto gap-0.5">
+                  <TabsList className="grid grid-cols-5 w-full bg-muted/60 border border-border p-1.5 rounded-2xl h-auto gap-1">
                     {([
                       { value: "profile",    label: "Profile",    icon: User },
                       { value: "call-logs",  label: "Call Logs",  icon: PhoneCall },
@@ -635,13 +635,13 @@ export function CandidateDetailSidebar({
                         key={value}
                         value={value}
                         className={cn(
-                          "flex flex-col items-center gap-1 rounded-xl py-2.5 px-1 transition-all duration-200 border border-transparent",
-                          "text-muted-foreground hover:text-foreground",
-                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border-border"
+                          "flex items-center justify-center gap-2 rounded-xl py-3 px-4 transition-all duration-200 border border-transparent",
+                          "text-muted-foreground hover:text-foreground hover:bg-background/20",
+                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:border-border"
                         )}
                       >
-                        <Icon className="size-4 shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider leading-none hidden sm:block">{label}</span>
+                        <Icon className="size-5 shrink-0" />
+                        <span className="text-[11px] font-black uppercase tracking-widest leading-none">{label}</span>
                       </TabsTrigger>
                     ))}
                   </TabsList>

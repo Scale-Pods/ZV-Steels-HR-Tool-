@@ -1369,7 +1369,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               )
                             })}
                             <TableCell className="text-center px-2">
-                              <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                              <span className="text-xl font-bold bg-linear-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
                             </TableCell>
