@@ -49,33 +49,6 @@ type Candidate = SidebarCandidate & {
 
 interface Campaign { CampaignName: string; IsActive: boolean }
 
-// ── Configuration ─────────────────────────────────────────────────────────────
-const METRIC_COLUMNS = [
-  { key: "experience",        label: "Experience",         icon: Briefcase },
-  { key: "responsibilityfit", label: "Responsibility Fit", icon: CheckCircle2 },
-  { key: "location",          label: "Location",           icon: MapPin },
-  { key: "targets",           label: "Targets",            icon: Target },
-  { key: "noticeperiod",      label: "Notice Period",      icon: Calendar },
-  { key: "availability",      label: "Availability",       icon: Clock },
-  { key: "salary",            label: "Salary",             icon: DollarSign },
-  { key: "interview",         label: "Interview",          icon: MessageSquare }
-]
-
-// Normalize labels for parsing
-const LABEL_TO_KEY: Record<string, string> = {
-  "experience": "experience",
-  "responsibility fit": "responsibilityfit",
-  "responsibilityfit": "responsibilityfit",
-  "location": "location",
-  "targets": "targets",
-  "notice period": "noticeperiod",
-  "noticeperiod": "noticeperiod",
-  "availability": "availability",
-  "salary": "salary",
-  "salary expectation": "salary",
-  "interview": "interview"
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function normalizeDecision(raw?: any): "Passed" | "Rejected" | "Pending" {
   if (raw === undefined || raw === null || raw === "") return "Pending"
@@ -85,33 +58,132 @@ function normalizeDecision(raw?: any): "Passed" | "Rejected" | "Pending" {
   return "Pending"
 }
 
-function parseCallLogs(raw: any): Record<string, string> {
-  const result: Record<string, string> = {}
-  if (!raw) return result
-  const str = String(raw)
+type MetricEntry = { value: string; label: string }
 
-  // Try line-by-line first (standard format from n8n)
-  const lines = str.split("\n")
-  for (const line of lines) {
-    const colonIndex = line.indexOf(":")
-    if (colonIndex > 0) {
-      const rawLabel = line.slice(0, colonIndex).trim().toLowerCase()
-      const content = line.slice(colonIndex + 1).trim()
-      const internalKey = LABEL_TO_KEY[rawLabel]
-      if (internalKey && content) {
-        result[internalKey] = content
+function parseScreeningResponses(candidate: any): Record<string, MetricEntry> {
+  const result: Record<string, MetricEntry> = {}
+  if (!candidate) return result
+
+  const tryExtract = (obj: any): boolean => {
+    if (!obj) return false
+    const resolved = typeof obj === "string" ? JSON.parse(obj) : obj
+    if (!resolved) return false
+    const targets = [resolved, resolved?.output, resolved?.Output].filter(Boolean)
+    for (const t of targets) {
+      const responses = t?.screeningResponses || t?.ScreeningResponses
+      if (Array.isArray(responses)) {
+        for (const r of responses) {
+          if (r.question && r.answer) {
+            const key = r.question.toLowerCase().replace(/[^a-z0-9]/g, "")
+            if (!result[key]) result[key] = { value: r.answer, label: r.question }
+          }
+        }
+        if (Object.keys(result).length > 0) return true
       }
     }
+    return false
   }
 
-  // If still empty, try regex fallback for single-line blobs
-  if (Object.keys(result).length === 0) {
-    const labelsPattern = Object.keys(LABEL_TO_KEY).join("|")
-    const regex = new RegExp(`(${labelsPattern})\\s*:\\s*([^\\n]+)`, "gi")
-    let match
-    while ((match = regex.exec(str)) !== null) {
-      const internalKey = LABEL_TO_KEY[match[1].toLowerCase()]
-      if (internalKey) result[internalKey] = match[2].trim()
+  const paths = [candidate, candidate?.json, candidate?.output, candidate?.Output]
+  for (const p of paths) {
+    if (!p) continue
+    try { if (tryExtract(p)) return result } catch (_e) {}
+  }
+
+  return result
+}
+
+// Values that indicate no real answer was captured — we skip these so they
+// don't pollute the column list with "Not mentioned" everywhere.
+const EMPTY_VALUES = new Set([
+  "n/a", "na", "none", "-", "—", "", "null", "undefined",
+])
+
+function isRealValue(v: string): boolean {
+  return !EMPTY_VALUES.has(v.toLowerCase().trim())
+}
+
+function parseCallLogs(raw: any): Record<string, MetricEntry> {
+  const result: Record<string, MetricEntry> = {}
+  if (!raw) return result
+  const str = String(raw).trim()
+  if (!str) return result
+
+  // Try JSON first — some payloads are JSON arrays/objects
+  try {
+    const parsed = JSON.parse(str)
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        const q = item?.question || item?.Question || item?.label || item?.Label
+        const a = item?.answer || item?.Answer || item?.value || item?.Value
+        if (q && a && isRealValue(String(a))) {
+          const key = String(q).toLowerCase().replace(/[^a-z0-9]/g, "")
+          if (!result[key]) result[key] = { value: String(a), label: String(q) }
+        }
+      }
+      if (Object.keys(result).length > 0) return result
+    }
+  } catch (_e) { /* Not JSON, fall through */ }
+
+  const lines = str.split(/\n|\r|\r\n|\\n/)
+  let pendingQuestion = ""
+  
+  for (let line of lines) {
+    // 1) Question - Answer or Question: Answer
+    // We specifically target the digit-prefix pattern first
+    const digitMatch = line.match(/^\s*\d+[\.\)]\s*(.+?)\s*[:\-\—\–]\s*(.*)$/)
+    if (digitMatch) {
+      const q = digitMatch[1].trim()
+      const a = digitMatch[2].trim()
+      if (q && a && isRealValue(a)) {
+        const key = q.toLowerCase().replace(/[^a-z0-9]/g, "")
+        if (!result[key]) result[key] = { value: a, label: q }
+        continue
+      }
+    }
+
+    // Standard Q: A: format
+    const qMatch = line.match(/^(?:Q|Question)\s*[:\-]\s*(.*)$/i)
+    if (qMatch) {
+      pendingQuestion = qMatch[1].trim()
+      continue
+    }
+
+    const aMatch = line.match(/^(?:A|Answer)\s*[:\-]\s*(.*)$/i)
+    if (aMatch && pendingQuestion) {
+      const answer = aMatch[1].trim()
+      if (isRealValue(answer)) {
+        const key = pendingQuestion.toLowerCase().replace(/[^a-z0-9]/g, "")
+        if (!result[key]) {
+          result[key] = { value: answer, label: pendingQuestion }
+        }
+      }
+      pendingQuestion = ""
+      continue
+    }
+
+    // 3. Fallback to standard "Label: Value" or "Label - Value" format
+    // Supports: "1) Question - Answer", "Question: Answer", "Question — Answer" etc.
+    const match = line.match(/^(?:\d+[\.\)]\s?)(.+?)\s*[:\-–—]\s*(.*)$/) || 
+                  line.match(/^([^:\-–—]{3,120})\s*[:\-–—]\s*(.*)$/)
+    
+    if (match) {
+      const rawLabel = match[1].trim()
+      const content = match[2].trim()
+      
+      // EXCLUDE long conversational lines and common transcript headers
+      const isAgent = /^(agent|candidate|user|simran|caller|receiver|speaker|person)$/i.test(rawLabel)
+      const isTooLong = rawLabel.length > 120
+      
+      if (!isAgent && !isTooLong && content && isRealValue(content)) {
+        const cleanLabel = rawLabel.replace(/^[QA]\s*$/i, "").trim()
+        if (cleanLabel) {
+          const key = cleanLabel.toLowerCase().replace(/[^a-z0-9]/g, "")
+          if (!result[key]) {
+            result[key] = { value: content, label: cleanLabel }
+          }
+        }
+      }
     }
   }
 
@@ -227,15 +299,59 @@ export default function CallAnalysisPage() {
 
       const rawData = JSON.parse(text)
       let list: any[] = []
-      let actualData = rawData.data || rawData
-
-      if (Array.isArray(actualData)) {
-        list = actualData.map(item => item?.json || item)
-      } else if (actualData && typeof actualData === "object") {
-        list = actualData.campaignCandidates || actualData.candidates || actualData.data || actualData.items || []
+      
+      // Attempt to find any array of objects that looks like candidates
+      const findCandidateList = (obj: any): any[] | null => {
+        if (Array.isArray(obj)) {
+          // If it's an array of objects with common candidate fields, it's likely our list
+          if (obj.length > 0 && typeof obj[0] === 'object' && (obj[0].Email || obj[0].email || obj[0].Name || obj[0].name || obj[0].phoneNumber)) {
+            return obj
+          }
+          // Also check if it's an array of wrappers like [{ data: [...] }]
+          for (const item of obj) {
+            const nested = findCandidateList(item)
+            if (nested) return nested
+          }
+        } else if (obj && typeof obj === 'object') {
+          // Check common properties
+          const targets = [obj.data, obj.candidates, obj.campaignCandidates, obj.items, obj.results]
+          for (const t of targets) {
+            if (Array.isArray(t)) return t
+          }
+          // Recursive check for any array property
+          for (const key in obj) {
+            if (Array.isArray(obj[key])) {
+              const res = findCandidateList(obj[key])
+              if (res) return res
+            }
+          }
+        }
+        return null
       }
 
-      setAllCandidates(list)
+      list = findCandidateList(rawData) || (Array.isArray(rawData) ? rawData : [])
+
+      // Map candidates and merge potential JSON/output wrappers
+      const candidates = list.map(item => {
+        if (!item || typeof item !== "object") return item
+        let base = { ...item }
+        if (item.json && typeof item.json === "object") base = { ...base, ...item.json }
+        if (item.output && typeof item.output === "object") base = { ...base, ...item.output }
+        if (item.data && typeof item.data === "object" && !Array.isArray(item.data)) {
+          base = { ...base, ...item.data }
+        }
+        return base
+      })
+
+      // Deduplicate by email/candidateID/phone
+      const uniqueMap = new Map()
+      candidates.forEach((c: any) => {
+        if (!c || typeof c !== 'object') return
+        const key = c.Email || c.email || c.CandidateID || c["Candidate ID"] || c.phoneNumber || c.PhoneNumber || c.Phone || c["Phone Number"] || Math.random().toString()
+        if (!uniqueMap.has(key)) uniqueMap.set(key, c)
+      })
+      
+      setAllCandidates(Array.from(uniqueMap.values()))
     } catch (err) {
       console.error("[CallAnalysis] data fetch error:", err)
     } finally {
@@ -245,16 +361,94 @@ export default function CallAnalysisPage() {
 
   useEffect(() => { fetchData(selectedCampaign) }, [selectedCampaign, fetchData])
 
-  // Data processing — only include candidates that have Call Logs data
+  // Data processing — raw Call Logs text is tried first (real Q&A from the call).
+  // screeningResponses is only used as a fallback (it often has "Not mentioned" placeholders).
   const dataRows = useMemo(() => {
     return allCandidates
       .map(c => {
-        // Find Call Logs field (might have space or variations)
-        const rawText = c["Call Logs"] || c.CallLogs || c.call_logs || c.Data || c.data || ""
-        return { candidate: c, metrics: parseCallLogs(rawText), hasCallData: rawText.trim().length > 0 }
+        // ULTIMATE FIX: Scan EVERY single field in the object for the intelligence pattern.
+        // We look for the field that has the MOST matches of the "1) " pattern.
+        let bestText = ""
+        let maxMatches = -1
+        
+        const allEntries = Object.entries(c)
+        for (const [key, val] of allEntries) {
+          if (typeof val !== "string" || val.length < 5) continue
+          
+          const text = val.trim()
+          const matches = text.match(/\d+[\.\)]\s/g)
+          const count = matches ? matches.length : 0
+          
+          let score = count
+          if (count > 0 && /log|call|intel/i.test(key)) score += 0.5
+
+          if (score > maxMatches) {
+            maxMatches = score
+            bestText = text
+          }
+        }
+        
+        // Final fallback: If no pattern was found, try to find the explicit "Call Logs" field
+        if (!bestText) {
+          bestText = c["Call Logs"] || c.CallLogs || c.call_logs || ""
+          if (bestText) maxMatches = 1 // Force it to parse
+        }
+        
+        let metrics: Record<string, MetricEntry> = {}
+        let hasCallData = false
+        let bestRaw = ""
+
+        if (maxMatches > 0) {
+          metrics = parseCallLogs(bestText)
+          hasCallData = true
+          bestRaw = bestText
+        } else {
+          // Absolute fallback if no numbers found: check the hard-coded keys
+          const logKeys = ["Call Logs", "CallLogs", "call_logs", "Call_logs", "callLogs"]
+          for (const k of logKeys) {
+            if (c[k] && String(c[k]).trim().length > 5) {
+              bestText = String(c[k]).trim()
+              metrics = parseCallLogs(bestText)
+              hasCallData = true
+              bestRaw = bestText
+              break
+            }
+          }
+        }
+
+        if (hasCallData && Object.keys(metrics).length > 0) {
+          return { candidate: c, metrics, hasCallData, bestRaw }
+        }
+
+        return { 
+          candidate: c, 
+          metrics: {} as Record<string, MetricEntry>, 
+          hasCallData: hasCallData || !!(bestRaw && bestRaw.length > 0),
+          bestRaw 
+        }
       })
-      .filter(({ hasCallData }) => hasCallData) // Only show candidates with actual call data
+      // We keep the candidate if they have ANY text in Call Logs, even if parsing failed to extract metrics
+      // This ensures they show up in the table so the user can at least see the profile.
+      .filter(({ hasCallData }) => hasCallData)
   }, [allCandidates])
+
+  const { dynamicMetricKeys, columnLabels } = useMemo(() => {
+    const keySet = new Set<string>()
+    const labelMap: Record<string, string> = {}
+    for (const { metrics } of dataRows) {
+      for (const [key, entry] of Object.entries(metrics)) {
+        keySet.add(key)
+        if (!labelMap[key]) labelMap[key] = entry.label
+      }
+    }
+    const keys = Array.from(keySet)
+    // ROOT FIX: If no dynamic keys were found but we have dataRows, add a 'RAW DATA' column
+    if (keys.length === 0 && dataRows.length > 0) {
+      keys.push("raw_fallback")
+      labelMap["raw_fallback"] = "Raw Transcript"
+    }
+    return { dynamicMetricKeys: keys, columnLabels: labelMap }
+  }, [dataRows])
 
   const filtered = useMemo(() => {
     return dataRows
@@ -283,10 +477,10 @@ export default function CallAnalysisPage() {
   }, [dataRows, search, decisionFilter, sortField, sortDir])
 
   const stats = useMemo(() => ({
-    total: allCandidates.length,
-    passed: allCandidates.filter(c => normalizeDecision(c["Call Decision"] || c.CallRound || c.decision || c.Decision) === "Passed").length,
-    rejected: allCandidates.filter(c => normalizeDecision(c["Call Decision"] || c.CallRound || c.decision || c.Decision) === "Rejected").length,
-  }), [allCandidates, filtered])
+    total: dataRows.length,
+    passed: dataRows.filter(r => normalizeDecision(r.candidate["Call Decision"] || r.candidate.CallRound || r.candidate.decision || r.candidate.Decision) === "Passed").length,
+    rejected: dataRows.filter(r => normalizeDecision(r.candidate["Call Decision"] || r.candidate.CallRound || r.candidate.decision || r.candidate.Decision) === "Rejected").length,
+  }), [dataRows])
 
   const handleUpdateDecision = async (candidate: Candidate, newDecision: string) => {
     setUpdatingEmail(candidate.Email || "")
@@ -354,37 +548,49 @@ export default function CallAnalysisPage() {
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500 pb-10">
       {/* Header Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-card border border-border p-8 shadow-sm">
-        <div className="absolute top-0 right-0 p-8 opacity-5 blur-3xl bg-primary rounded-full size-64 -mr-32 -mt-32" />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Sparkles className="size-6 text-primary" />
+      <div className="relative overflow-hidden rounded-[32px] bg-linear-to-br from-card/50 to-muted/20 border border-border/50 p-10 shadow-2xl backdrop-blur-3xl group">
+        <div className="absolute top-0 right-0 p-8 opacity-10 blur-[100px] bg-primary rounded-full size-80 -mr-40 -mt-40 transition-all duration-700 group-hover:opacity-20 group-hover:scale-110" />
+        <div className="absolute bottom-0 left-0 p-8 opacity-5 blur-[80px] bg-cyan-500 rounded-full size-64 -ml-32 -mb-32 transition-all duration-700 group-hover:opacity-10" />
+        
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="size-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner group/icon">
+                <Sparkles className="size-7 text-primary transition-transform duration-500 group-hover/icon:rotate-12 group-hover/icon:scale-110" />
               </div>
-              <h1 className="text-3xl font-black text-foreground tracking-tight">Call Analysis <span className="text-primary">Hub</span></h1>
+              <div>
+                <h1 className="text-4xl font-black text-foreground tracking-tight leading-none mb-1">Call Analysis <span className="text-primary italic">Hub</span></h1>
+                <p className="text-muted-foreground/60 text-[11px] font-black uppercase tracking-[0.3em]">AI-Driven Candidate Intelligence</p>
+              </div>
             </div>
-            <p className="text-muted-foreground text-sm max-w-lg">Intelligent extraction of key candidate metrics from automated call logs.</p>
+            <p className="text-muted-foreground/70 text-sm max-w-xl leading-relaxed">Advanced NLP extraction of key qualification metrics and behavioral signals from automated candidate call logs.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => fetchData(selectedCampaign)} disabled={loading} className="rounded-xl border-border text-foreground h-12 px-6 bg-background/50 backdrop-blur-md">
-              <RefreshCcw className={cn("size-4 mr-2", loading && "animate-spin")} /> {loading ? "Syncing..." : "Refresh Data"}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => fetchData(selectedCampaign)} 
+              disabled={loading} 
+              className="rounded-2xl border-white/10 text-foreground h-14 px-8 bg-zinc-900/50 backdrop-blur-2xl hover:bg-zinc-900/80 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl active:scale-[0.98]"
+            >
+              <RefreshCcw className={cn("size-4 mr-3", loading && "animate-spin")} /> 
+              {loading ? "Synchronizing..." : "Refresh Intelligence"}
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: "Profiles", value: stats.total, icon: Users, color: "text-foreground" },
-            { label: "Matching", value: filtered.length, icon: ListChecks, color: "text-primary" },
-            { label: "Passed", value: stats.passed, icon: CheckCircle2, color: "text-emerald-500" },
-            { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-red-500" },
+            { label: "Analysed Profiles", value: stats.total, icon: Users, color: "text-blue-500", bg: "bg-blue-500/5" },
+            { label: "Active Filter", value: filtered.length, icon: ListChecks, color: "text-primary", bg: "bg-primary/5" },
+            { label: "Conversion Rate", value: stats.total > 0 ? `${((stats.passed / stats.total) * 100).toFixed(0)}%` : "0%", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/5" },
+            { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-red-500", bg: "bg-red-500/5" },
           ].map((s, i) => (
-            <div key={i} className="bg-muted/30 rounded-2xl p-4 border border-border">
-              <div className="flex items-center gap-2 mb-1">
-                <s.icon className={cn("size-3.5", s.color)} />
-                <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">{s.label}</span>
+            <div key={i} className={cn("rounded-2xl p-5 border border-white/5 transition-all duration-300 hover:scale-[1.02] hover:bg-white/5 shadow-sm", s.bg)}>
+              <div className="flex items-center gap-2 mb-2 opacity-60">
+                <s.icon className={cn("size-4", s.color)} />
+                <span className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">{s.label}</span>
               </div>
-              <div className="text-2xl font-black text-foreground">{s.value}</div>
+              <div className="text-3xl font-black text-foreground drop-shadow-sm">{s.value}</div>
             </div>
           ))}
         </div>
@@ -430,23 +636,22 @@ export default function CallAnalysisPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[10px] border-collapse">
             <thead>
-              <tr className="bg-muted/50 border-b border-border">
-                <th className="sticky left-0 z-20 bg-muted/50 px-3 py-3 text-left font-black text-muted-foreground uppercase tracking-widest w-[160px] cursor-pointer border-r border-border" onClick={() => toggleSort("name")}>
-                  <div className="flex items-center gap-2">Target Profile <SortIcon field="name" sortField={sortField} sortDir={sortDir} /></div>
+              <tr className="bg-muted/30 border-b border-border/50">
+                <th className="sticky left-0 z-20 bg-background/80 backdrop-blur-xl px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] w-[180px] cursor-pointer border-r border-border/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]" onClick={() => toggleSort("name")}>
+                  <div className="flex items-center gap-2">Target Profile (v7-ULTIMATE-SELECTOR) <SortIcon field="name" sortField={sortField} sortDir={sortDir} /></div>
                 </th>
-                <th className="px-3 py-3 text-left font-black text-muted-foreground uppercase tracking-widest w-[110px] border-r border-border whitespace-nowrap">Status</th>
-                {METRIC_COLUMNS.map((col, i) => (
-                  <th key={i} className="px-3 py-3 text-left font-black text-muted-foreground uppercase tracking-widest min-w-[120px] max-w-[180px] border-r border-border">
+                <th className="px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] w-[110px] border-r border-border/50 whitespace-nowrap">Status</th>
+                {dynamicMetricKeys.map((key, i) => (
+                  <th key={i} className="px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] min-w-[130px] max-w-[200px] border-r border-border/50">
                     <div className="flex items-center gap-2">
-                       <col.icon className="size-3 text-muted-foreground/60" />
-                       <span className="text-foreground/80">{col.label}</span>
+                       <span className="text-foreground/70">{columnLabels[key] || key}</span>
                     </div>
                   </th>
                 ))}
-                <th className="px-3 py-3 text-left font-black text-muted-foreground uppercase tracking-widest min-w-[140px] border-r border-border">
+                <th className="px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] min-w-[150px] border-r border-border/50">
                   <div className="flex items-center gap-2">
-                     <PhoneCall className="size-3 text-muted-foreground/60" />
-                     <span className="text-foreground/80">Call Recording</span>
+                     <PhoneCall className="size-3 text-primary/60" />
+                     <span className="text-foreground/70">Call Recording</span>
                   </div>
                 </th>
               </tr>
@@ -454,14 +659,14 @@ export default function CallAnalysisPage() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={METRIC_COLUMNS.length + 2} className="py-32 text-center">
+                  <td colSpan={dynamicMetricKeys.length + 3} className="py-32 text-center">
                     <Loader2 className="size-10 animate-spin mx-auto text-primary mb-4 opacity-50" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Processing Transcripts...</p>
                   </td>
                 </tr>
               ) : !selectedCampaign ? (
                 <tr>
-                  <td colSpan={METRIC_COLUMNS.length + 3} className="py-32 text-center">
+                  <td colSpan={dynamicMetricKeys.length + 3} className="py-32 text-center">
                     <Sparkles className="size-10 mx-auto text-primary/30 mb-4 animate-pulse" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Select a campaign to view the data</p>
                     <p className="text-muted-foreground/60 text-[9px] mt-2">Choose a campaign from the dropdown above to start analysis</p>
@@ -469,7 +674,7 @@ export default function CallAnalysisPage() {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={METRIC_COLUMNS.length + 3} className="py-32 text-center">
+                  <td colSpan={dynamicMetricKeys.length + 3} className="py-32 text-center">
                     <PhoneCall className="size-8 mx-auto text-muted-foreground/30 mb-4" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px]">No matching records found</p>
                   </td>
@@ -486,14 +691,14 @@ export default function CallAnalysisPage() {
                         setIsSidebarOpen(true)
                       }}
                     >
-                      <td className="sticky left-0 z-10 bg-card/95 backdrop-blur-md px-3 py-2 border-r border-border group-hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-2.5">
-                          <div className="size-7 rounded-lg bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-black shadow-lg shadow-cyan-500/10 text-[10px]">
+                      <td className="sticky left-0 z-10 bg-background/95 backdrop-blur-xl px-4 py-3 border-r border-border/50 group-hover:bg-muted/50 transition-colors shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-black border border-primary/20 shadow-sm text-[11px]">
                             {name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-foreground text-[11px] truncate leading-none">{name}</p>
-                            <p className="text-[9px] text-muted-foreground mt-1 truncate font-medium">{c.Email || ""}</p>
+                            <p className="font-bold text-foreground text-[11px] truncate leading-none mb-1">{name}</p>
+                            <p className="text-[9px] text-muted-foreground/70 truncate font-medium">{c.Email || ""}</p>
                           </div>
                         </div>
                       </td>
@@ -507,10 +712,22 @@ export default function CallAnalysisPage() {
                           disabled={updatingEmail === c.Email}
                         />
                       </td>
-                      {METRIC_COLUMNS.map((col, ci) => {
-                        const val = metrics[col.key]
-                        if (!val) return <td key={ci} className="px-3 py-2 text-muted-foreground/30 font-mono border-r border-border text-center">—</td>
-                        const style = answerStyle(val)
+                      {dynamicMetricKeys.map((key, ci) => {
+                        if (key === "raw_fallback") {
+                          // ROOT FIX: Show the raw text if parsing failed
+                          const rawText = c.CallLogs || c["Call Logs"] || ""
+                          return (
+                            <td key={ci} className="px-3 py-2 border-r border-border min-w-[250px] max-w-[400px]">
+                              <p className="text-foreground/80 text-[10px] leading-tight line-clamp-3 font-mono italic" title={String(rawText)}>
+                                {String(rawText).substring(0, 500)}
+                                {String(rawText).length > 500 ? "..." : ""}
+                              </p>
+                            </td>
+                          )
+                        }
+                        const entry = metrics[key]
+                        if (!entry) return <td key={ci} className="px-3 py-2 text-muted-foreground/30 font-mono border-r border-border text-center">—</td>
+                        const style = answerStyle(entry.value)
                         return (
                           <td key={ci} className="px-3 py-2 border-r border-border min-w-[120px] max-w-[180px]">
                             {style.type === "yes" ? (
@@ -522,21 +739,23 @@ export default function CallAnalysisPage() {
                                 <X className="size-2.5" /> NO
                               </div>
                             ) : (
-                              <p className="text-foreground/80 text-[9px] leading-tight line-clamp-2" title={val}>{val}</p>
+                              <p className="text-foreground/80 text-[9px] leading-tight line-clamp-2" title={entry.value}>{entry.value}</p>
                             )}
                           </td>
                         )
                       })}
-                      <td className="px-3 py-2 border-r border-border min-w-[140px]" onClick={e => e.stopPropagation()}>
+                      <td className="px-4 py-3 border-r border-border/50 min-w-[150px]" onClick={e => e.stopPropagation()}>
                         {(() => {
                           const recordingUrl = c["Call Recording"] || c.CallRecording || c.call_recording || c.Recording || c.recording;
                           if (!recordingUrl) return <div className="text-muted-foreground/30 font-mono text-center">—</div>;
                           return (
-                            <audio 
-                              controls 
-                              src={recordingUrl}
-                              className="h-8 w-full max-w-[140px] [&::-webkit-media-controls-panel]:bg-muted [&::-webkit-media-controls-panel]:rounded-md"
-                            />
+                            <div className="flex items-center gap-2 group/audio">
+                              <audio 
+                                controls 
+                                src={recordingUrl}
+                                className="h-7 w-full max-w-[140px] opacity-70 group-hover/audio:opacity-100 transition-opacity [&::-webkit-media-controls-panel]:bg-muted/80 [&::-webkit-media-controls-panel]:rounded-lg"
+                              />
+                            </div>
                           );
                         })()}
                       </td>

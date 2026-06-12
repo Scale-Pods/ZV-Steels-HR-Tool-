@@ -429,7 +429,7 @@ export default function MeetingsPage() {
       if (c.hrMeetingDate && c.hrMeetingDate.trim() !== "") {
         meetings.push({ 
           candidate: c, 
-          type: "HR Round", 
+          type: "Round 1", 
           date: c.hrMeetingDate, 
           time: c.hrMeetingTime, 
           link: c.hrMeetingLink, 
@@ -441,7 +441,7 @@ export default function MeetingsPage() {
       if (c.techMeetingDate && c.techMeetingDate.trim() !== "") {
         meetings.push({ 
           candidate: c, 
-          type: "Tech Interview", 
+          type: "Round 2", 
           date: c.techMeetingDate, 
           time: c.techMeetingTime, 
           link: c.techMeetingLink, 
@@ -453,7 +453,7 @@ export default function MeetingsPage() {
       if (c.managerMeetingDate && c.managerMeetingDate.trim() !== "") {
         meetings.push({ 
           candidate: c, 
-          type: "Manager Interview", 
+          type: "Round 3", 
           date: c.managerMeetingDate, 
           time: c.managerMeetingTime, 
           link: c.managerMeetingLink, 

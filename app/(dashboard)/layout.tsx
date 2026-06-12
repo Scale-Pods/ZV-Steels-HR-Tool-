@@ -69,29 +69,29 @@ function NavItems() {
                 asChild
                 isActive={pathname === item.href}
                 className={cn(
-                  "w-full h-auto py-3.5 px-4 rounded-xl transition-all duration-200",
+                  "w-full h-auto py-3.5 px-4 rounded-2xl transition-all duration-300 border border-transparent mb-1",
                   "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:py-3 group-data-[state=collapsed]:w-10! group-data-[state=collapsed]:p-0!",
                   pathname === item.href
-                    ? "bg-muted/50 text-foreground"
-                    : "hover:bg-muted/30 text-foreground/70 hover:text-foreground",
+                    ? "bg-primary/10 border-primary/20 text-foreground shadow-xs"
+                    : "hover:bg-muted/40 text-foreground/60 hover:text-foreground",
                 )}
               >
                 <span className="flex items-center gap-4 w-full group-data-[state=collapsed]:justify-center">
-                  <span
+                  <div
                     className={cn(
-                      "transition-colors shrink-0",
+                      "transition-all duration-300 shrink-0 size-9 rounded-xl flex items-center justify-center",
                       pathname === item.href
-                        ? "text-primary"
-                        : "text-foreground/60 group-hover:text-foreground",
+                        ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
+                        : "bg-muted/50 text-foreground/40 group-hover:bg-muted group-hover:text-foreground",
                     )}
                   >
                     {item.icon}
-                  </span>
+                  </div>
                   <div className="flex-1 overflow-hidden group-data-[state=collapsed]:hidden">
-                    <div className="font-semibold text-[15px] leading-tight truncate">
+                    <div className="font-bold text-[14px] leading-tight truncate">
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-medium opacity-60 mt-0.5 truncate uppercase tracking-wider">
+                    <div className="text-[10px] text-muted-foreground/50 font-bold opacity-80 mt-0.5 truncate uppercase tracking-widest">
                       {item.description}
                     </div>
                   </div>
@@ -160,16 +160,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-2">
-              <div className="flex items-center gap-3 w-full opacity-80">
-                <div className="h-px w-8 bg-border/50" />
-                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground leading-none text-center">
-                  Powered By
-                </span>
-                <div className="h-px w-8 bg-border/50" />
-              </div>
-              
-              <div className="relative h-14 w-44">
+            <div className="group-data-[state=collapsed]:hidden flex flex-col items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground leading-none text-center">
+                Powered By
+              </span>
+              <div className="relative h-8 w-28">
                 <Image
                   src="/images/scalepods-logo.avif"
                   alt="Scalepods Logo"

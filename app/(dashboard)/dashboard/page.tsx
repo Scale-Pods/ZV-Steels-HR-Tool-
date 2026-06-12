@@ -630,9 +630,9 @@ export default function DashboardPage() {
   const stageDistributionData = [
     { name: "Resume Screening", value: hrData?.overview?.resume_passed || 0, fill: "#8b5cf6" },
     { name: "Call Round", value: hrData?.overview?.call_passed || 0, fill: "#3b82f6" },
-    { name: "HR Round", value: hrData?.overview?.hr_passed || 0, fill: "#10b981" },
-    { name: "Tech Interview", value: hrData?.overview?.tech_passed || 0, fill: "#f59e0b" },
-    { name: "Manager Interview", value: hrData?.overview?.manager_passed || 0, fill: "#ef4444" },
+    { name: "Round 1", value: hrData?.overview?.hr_passed || 0, fill: "#10b981" },
+    { name: "Round 2", value: hrData?.overview?.tech_passed || 0, fill: "#f59e0b" },
+    { name: "Round 3", value: hrData?.overview?.manager_passed || 0, fill: "#ef4444" },
   ] // Removed filter to ensure all rounds show in legend even if 0
 
   const scoreRangeData =

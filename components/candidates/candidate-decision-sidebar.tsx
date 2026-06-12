@@ -127,22 +127,27 @@ interface CandidateDecisionSidebarContentProps {
   onSuccess?: () => void
   hideSubmit?: boolean
   numberOfRounds?: number
+  isOptimized?: boolean
 }
 
 export interface CandidateDecisionSidebarRef {
   submit: () => void
 }
 
-// Yes/No decision button group
+// Yes/No decision button group (shows Hire/Reject for final round)
 function DecisionButtons({
   value,
   onChange,
   disabled,
+  isFinal = false,
 }: {
   value: string
   onChange: (v: string) => void
   disabled: boolean
+  isFinal?: boolean
 }) {
+  const yesLabel = isFinal ? "Hire" : "Yes"
+  const noLabel = isFinal ? "Reject" : "No"
   return (
     <div className="flex gap-2">
       <button
@@ -160,7 +165,7 @@ function DecisionButtons({
         )}
       >
         <CheckCircle2 className="size-4" />
-        Yes
+        {yesLabel}
       </button>
       <button
         type="button"
@@ -175,14 +180,14 @@ function DecisionButtons({
         )}
       >
         <XCircle className="size-4" />
-        No
+        {noLabel}
       </button>
     </div>
   )
 }
 
 // Status indicator pill
-function StatusPill({ value }: { value: string }) {
+function StatusPill({ value, isFinal = false }: { value: string; isFinal?: boolean }) {
   if (!value) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
@@ -195,7 +200,7 @@ function StatusPill({ value }: { value: string }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400">
         <CheckCircle2 className="size-3" />
-        Approved
+        {isFinal ? "Hired" : "Approved"}
       </span>
     )
   }
@@ -214,10 +219,11 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
   onSuccess,
   hideSubmit = false,
   numberOfRounds = 3,
+  isOptimized = false,
 }, ref) => {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [expandedRound, setExpandedRound] = useState<number>(0)
+  const [expandedRound, setExpandedRound] = useState<number>(isOptimized ? 1 : 0)
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit
@@ -561,6 +567,16 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       // ONLY send the records that have actually been modified to prevent wiping other backend records
       const queryParams = new URLSearchParams({ action: "UpdateDecision" })
 
+      // Determine the final round to send "Hire"/"Reject" instead of "Yes"/"No"
+      const lastRoundField = numberOfRounds >= 3 ? "Manager Interview" : numberOfRounds === 2 ? "Tech Interview" : numberOfRounds === 1 ? "HR Round" : "Call Round"
+
+      const toBackendValue = (roundField: string, value: string) => {
+        if (roundField === lastRoundField) {
+          return value === "Yes" ? "Hire" : value === "No" ? "Reject" : value
+        }
+        return value
+      }
+
       const origResume = candidateDetails?.ResumeScreening || candidateDetails?.["Resume Decision"] || candidateDetails?.Decision || ""
       const origCall = candidateDetails?.CallRound || candidateDetails?.["Call Decision"] || candidateDetails?.["Call Status"] || ""
       const origHR = candidateDetails?.HRRound || candidateDetails?.["HR Decision"] || ""
@@ -568,19 +584,19 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       const origManager = candidateDetails?.ManagerInterview || candidateDetails?.["Manager Decision"] || candidateDetails?.FinalDecision || ""
 
       if (formData["Resume Screening"] && formData["Resume Screening"] !== origResume) {
-        queryParams.append("Resume Screening", formData["Resume Screening"])
+        queryParams.append("Resume Screening", toBackendValue("Resume Screening", formData["Resume Screening"]))
       }
       if (formData["Call Round"] && formData["Call Round"] !== origCall) {
-        queryParams.append("Call Round", formData["Call Round"])
+        queryParams.append("Call Round", toBackendValue("Call Round", formData["Call Round"]))
       }
       if (formData["HR Round"] && formData["HR Round"] !== origHR) {
-        queryParams.append("HR Round", formData["HR Round"])
+        queryParams.append("HR Round", toBackendValue("HR Round", formData["HR Round"]))
       }
       if (formData["Tech Interview"] && formData["Tech Interview"] !== origTech) {
-        queryParams.append("Tech Interview", formData["Tech Interview"])
+        queryParams.append("Tech Interview", toBackendValue("Tech Interview", formData["Tech Interview"]))
       }
       if (formData["Manager Interview"] && formData["Manager Interview"] !== origManager) {
-        queryParams.append("Manager Interview", formData["Manager Interview"])
+        queryParams.append("Manager Interview", toBackendValue("Manager Interview", formData["Manager Interview"]))
       }
 
       // 2. Build Body with strictly static details + updated comments
@@ -663,7 +679,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     },
     // Call Round is handled separately (read-only, index 1)
     {
-      title: "HR Round",
+      title: "Round 1",
       icon: <Phone className="size-4" />,
       iconColor: "text-blue-400",
       barColor: "bg-blue-500",
@@ -672,7 +688,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       commentsKey: "HR Comments" as const,
     },
     {
-      title: "Tech Interview",
+      title: "Round 2",
       icon: <Briefcase className="size-4" />,
       iconColor: "text-amber-400",
       barColor: "bg-amber-500",
@@ -681,7 +697,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       commentsKey: "Tech Comments" as const,
     },
     {
-      title: "Manager Interview",
+      title: "Round 3",
       icon: <UserCog className="size-4" />,
       iconColor: "text-emerald-400",
       barColor: "bg-emerald-500",
@@ -691,11 +707,15 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
   ]
 
   // Map NumberOfRounds to which rounds to show
-  // 0: Resume Screening (Always index 0)
-  // 1: HR Round (Index 1)
-  // 2: Tech Interview (Index 2)
-  // 3: Manager Interview (Index 3)
-  const visibleRounds = [rounds[0]] // Always show Resume Screening
+  // When optimized: Resume Screening is skipped, pipeline starts from Call
+  // 0: Resume Screening (skipped when optimized)
+  // 1: HR Round (Index 0 when optimized)
+  // 2: Tech Interview (Index 1 when optimized)
+  // 3: Manager Interview (Index 2 when optimized)
+  const visibleRounds: typeof rounds = []
+  if (!isOptimized) {
+    visibleRounds.push(rounds[0]) // Resume Screening
+  }
   if (numberOfRounds >= 1) visibleRounds.push(rounds[1]) // HR
   if (numberOfRounds >= 2) {
     const techRound = { ...rounds[2] }
@@ -989,8 +1009,8 @@ function StructuredValue({
         <div className="relative">
           <div className="space-y-1.5 relative z-10">
 
-            {/* ── Round 1: Resume Screening (editable) ── */}
-            {(() => {
+            {/* ── Round 1: Resume Screening (editable) — hidden when optimized ── */}
+            {!isOptimized && (() => {
               const round = rounds[0]
               const value = formData[round.valueKey] || ""
               const isExpanded = expandedRound === 0
@@ -1078,7 +1098,7 @@ function StructuredValue({
                 >
                   <button
                     type="button"
-                    onClick={() => toggleRound(1)}
+                    onClick={() => toggleRound(isOptimized ? 0 : 1)}
                     className="w-full flex items-center gap-3 px-3 py-3 text-left"
                   >
                     <div
@@ -1113,7 +1133,7 @@ function StructuredValue({
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">Round 2 of {totalRounds} - Data from webhook</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Round {isOptimized ? "1" : "2"} of {totalRounds} - Data from webhook</p>
                     </div>
                     {isExpanded ? <ChevronUp className="size-4 text-muted-foreground shrink-0" /> : <ChevronDown className="size-4 text-muted-foreground shrink-0" />}
                   </button>
@@ -1311,7 +1331,8 @@ function StructuredValue({
 
             {/* ── Rounds 3-5: HR, Tech, Manager (editable) ── */}
             {visibleRounds.slice(1).map((round, i) => {
-              const actualIndex = i + 2 // offset by 2 (Resume=0, Call=1, then HR=2, Tech=3, Manager=4)
+              const isLastRound = i === visibleRounds.slice(1).length - 1
+              const actualIndex = isOptimized ? i + 1 : i + 2 // offset: Call at 0 when optimized, else Resume=0, Call=1
               const value = formData[round.valueKey] || ""
               const isExpanded = expandedRound === actualIndex
               const isDecided = value === "Yes" || value === "No"
@@ -1347,7 +1368,7 @@ function StructuredValue({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground">{round.title}</span>
-                        <StatusPill value={value} />
+                        <StatusPill value={value} isFinal={isLastRound} />
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         Round {actualIndex + 1} of {totalRounds}
@@ -1362,15 +1383,16 @@ function StructuredValue({
                       <div className={cn("h-0.5 w-12 rounded-full", round.barColor, "opacity-60")} />
 
                       <div className="space-y-2">
-                        <Label className="text-muted-foreground text-xs">Decision</Label>
+                        <Label className="text-muted-foreground text-xs">{isLastRound ? "Final Decision" : "Decision"}</Label>
                         <DecisionButtons
                           value={value}
                           onChange={(v) => setFormData({ ...formData, [round.valueKey]: v })}
                           disabled={isSubmitting}
+                          isFinal={isLastRound}
                         />
                       </div>
                       
-                      {round.title === "HR Round" && (candidateDetails?.HRMeetingDate || candidateDetails?.HRMeetingTime) && (
+                      {round.valueKey === "HR Round" && (candidateDetails?.HRMeetingDate || candidateDetails?.HRMeetingTime) && (
                         <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/10 space-y-3">
                           <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <Clock className="size-3" />
@@ -1432,7 +1454,7 @@ function StructuredValue({
                         </div>
                       )}
 
-                      {round.title === "HR Round" && (candidateDetails?.HRMeetingMail || candidateDetails?.HRWAFollowup) && (
+                      {round.valueKey === "HR Round" && (candidateDetails?.HRMeetingMail || candidateDetails?.HRWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.HRMeetingMail && (
                             <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
@@ -1455,7 +1477,7 @@ function StructuredValue({
                         </div>
                       )}
 
-                      {round.title === "Tech Interview" && (candidateDetails?.TechMeetingDate || candidateDetails?.TechMeetingTime) && (
+                      {round.valueKey === "Tech Interview" && (candidateDetails?.TechMeetingDate || candidateDetails?.TechMeetingTime) && (
                         <div className="bg-amber-500/5 rounded-lg p-3 border border-amber-500/10 space-y-3">
                           <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <Clock className="size-3" />
@@ -1517,7 +1539,7 @@ function StructuredValue({
                         </div>
                       )}
 
-                      {round.title === "Tech Interview" && (candidateDetails?.TechMailSent || candidateDetails?.TechWAFollowup) && (
+                      {round.valueKey === "Tech Interview" && (candidateDetails?.TechMailSent || candidateDetails?.TechWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.TechMailSent && (
                             <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">
@@ -1540,7 +1562,7 @@ function StructuredValue({
                         </div>
                       )}
 
-                      {round.title === "Manager Interview" && (candidateDetails?.ManagerMeetingDate || candidateDetails?.ManagerMeetingTime) && (
+                      {round.valueKey === "Manager Interview" && (candidateDetails?.ManagerMeetingDate || candidateDetails?.ManagerMeetingTime) && (
                         <div className="bg-violet-500/5 rounded-lg p-3 border border-violet-500/10 space-y-3">
                           <p className="text-[10px] text-violet-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <Clock className="size-3" />
@@ -1602,7 +1624,7 @@ function StructuredValue({
                         </div>
                       )}
 
-                      {round.title === "Manager Interview" && (candidateDetails?.ManagerMeetingMail || candidateDetails?.ManagerWAFollowup) && (
+                      {round.valueKey === "Manager Interview" && (candidateDetails?.ManagerMeetingMail || candidateDetails?.ManagerWAFollowup) && (
                         <div className="space-y-2 pt-1">
                           {candidateDetails.ManagerMeetingMail && (
                             <div className="bg-muted/40 p-3 rounded-lg border border-border shadow-inner flex items-start gap-3">

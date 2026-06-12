@@ -67,6 +67,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
   const [experienceWeight, setExperienceWeight] = useState(25)
   const [educationWeight, setEducationWeight] = useState(25)
   const [alignmentWeight, setAlignmentWeight] = useState(25)
+  const [optimizedHiring, setOptimizedHiring] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [interviewers, setInterviewers] = useState<Interviewer[]>([])
@@ -171,6 +172,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     setNumberOfRounds(1)
     setPocEmails([""])
     setPocCalendarLinks([""])
+    setOptimizedHiring(true)
     setSkillsWeight(25)
     setExperienceWeight(25)
     setEducationWeight(25)
@@ -260,6 +262,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     if (maxSalary) payload.MaxSalary = Number.parseFloat(maxSalary)
     if (joiningDate) payload.JoiningDate = format(joiningDate, "yyyy-MM-dd")
     
+    payload.OptimizedHiring = optimizedHiring
     payload.SkillsMatchWeight = skillsWeight
     payload.ExperienceRelevanceWeight = experienceWeight
     payload.EducationRelevanceWeight = educationWeight
@@ -649,6 +652,17 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
                 Note: Total weight is {skillsWeight + experienceWeight + educationWeight + alignmentWeight}%. Aim for 100% for balanced scoring.
               </p>
             )}
+          </div>
+
+          {/* Optimized Hiring toggle */}
+          <div className="flex items-center justify-between rounded-lg border border-border/50 p-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Optimized Hiring</p>
+              <p className="text-[10px] text-muted-foreground">
+                When turned on, the candidate will directly move to call round
+              </p>
+            </div>
+            <Switch id="optimizedHiring" checked={optimizedHiring} onCheckedChange={setOptimizedHiring} disabled={isSubmitting} />
           </div>
 
           {/* Active toggle */}

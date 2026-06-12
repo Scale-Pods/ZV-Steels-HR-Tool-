@@ -148,6 +148,101 @@ const ITEMS_PER_PAGE = 10
 const USER_EMAIL = "guest@example.com"
 const GUEST_USER = { primaryEmailAddress: { emailAddress: USER_EMAIL } }
 
+// Values that indicate no real answer was captured
+const EMPTY_VALUES = new Set([
+  "n/a", "na", "none", "-", "—", "", "null", "undefined",
+])
+
+function isRealValue(v: string): boolean {
+  return !EMPTY_VALUES.has(v.toLowerCase().trim())
+}
+
+function parseCallLogsForTable(raw: any): Record<string, { value: string; label: string }> {
+  const result: Record<string, { value: string; label: string }> = {}
+  if (!raw) return result
+  const str = String(raw).trim()
+  if (!str) return result
+
+  // Try JSON first
+  try {
+    const parsed = JSON.parse(str)
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        const q = item?.question || item?.Question || item?.label || item?.Label
+        const a = item?.answer || item?.Answer || item?.value || item?.Value
+        if (q && a && isRealValue(String(a))) {
+          const key = String(q).toLowerCase().replace(/[^a-z0-9]/g, "")
+          if (!result[key]) result[key] = { value: String(a), label: String(q) }
+        }
+      }
+      if (Object.keys(result).length > 0) return result
+    }
+  } catch (_e) { /* Not JSON */ }
+
+  const lines = str.split(/\n|\r|\r\n|\\n/)
+  let pendingQuestion = ""
+
+  for (let line of lines) {
+    line = line.trim()
+    if (!line) continue
+
+    // 1) Numbered intelligence "1) Label - Value" or "1. Label: Value"
+    const digitMatch = line.match(/^\s*\d+[\.\)]\s*(.+?)\s*[:\-\—\–]\s*(.*)$/)
+    if (digitMatch) {
+      const q = digitMatch[1].trim()
+      const a = digitMatch[2].trim()
+      if (q && a && isRealValue(a)) {
+        const key = q.toLowerCase().replace(/[^a-z0-9]/g, "")
+        if (!result[key]) result[key] = { value: a, label: q }
+        continue
+      }
+    }
+
+    // Standard Q: A: format
+    const qMatch = line.match(/^(?:Q|Question)\s*[:\-]\s*(.*)$/i)
+    if (qMatch) {
+      pendingQuestion = qMatch[1].trim()
+      continue
+    }
+
+    const aMatch = line.match(/^(?:A|Answer)\s*[:\-]\s*(.*)$/i)
+    if (aMatch && pendingQuestion) {
+      const answer = aMatch[1].trim()
+      if (isRealValue(answer)) {
+        const key = pendingQuestion.toLowerCase().replace(/[^a-z0-9]/g, "")
+        if (!result[key]) {
+          result[key] = { value: answer, label: pendingQuestion }
+        }
+      }
+      pendingQuestion = ""
+      continue
+    }
+
+    // 3. Fallback to standard "Label: Value" or "Label - Value" format
+    const match = line.match(/^(?:\d+[\.\)]\s?)(.+?)\s*[:\-–—]\s*(.*)$/) || 
+                  line.match(/^([^:\-–—]{3,120})\s*[:\-–—]\s*(.*)$/)
+    
+    if (match) {
+      const rawLabel = match[1].trim()
+      const content = match[2].trim()
+      
+      const isAgent = /^(agent|candidate|user|simran|caller|receiver|speaker|person)$/i.test(rawLabel)
+      const isTooLong = rawLabel.length > 120
+      
+      if (!isAgent && !isTooLong && content && isRealValue(content)) {
+        const cleanLabel = rawLabel.replace(/^[QA]\s*$/i, "").trim()
+        if (cleanLabel) {
+          const key = cleanLabel.toLowerCase().replace(/[^a-z0-9]/g, "")
+          if (!result[key]) {
+            result[key] = { value: content, label: cleanLabel }
+          }
+        }
+      }
+    }
+  }
+  return result
+}
+
 export default function CampaignDetailClient({ campaignName }: CampaignDetailClientProps) {
   const router = useRouter()
   const isLoaded = true
@@ -156,6 +251,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const [isMounted, setIsMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<CampaignAnalytics | null>(null)
+  const [isOptimized, setIsOptimized] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [decisionFilter, setDecisionFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
@@ -290,10 +386,15 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
             if (currentCampaign?.NumberOfRounds) {
               campaignRounds = Number(currentCampaign.NumberOfRounds)
             }
+            if (currentCampaign) {
+              setIsOptimized(String(currentCampaign.Optimized || "").toLowerCase() === "true")
+            }
           }
         } catch (err) {
           console.warn("[v0] Could not fetch supplemental campaign metadata:", err)
         }
+      } else {
+        setIsOptimized(String(rawData.Optimized || "").toLowerCase() === "true")
       }
 
       const normalizeDecision = (val: any): string => {
@@ -305,78 +406,98 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       }
 
       // ─── Normalize the candidate item to our Candidate interface ───────────
-      // Field names from webhook use spaces: "Phone Number", "Resume Link", etc.
-      const normalizeCandidate = (c: any): Candidate => ({
-        ...c,
-        CandidateID:  c["Candidate ID"] || c.CandidateID || c.id || c.candidateID || "",
-        Name:         c.Name || c.name || c.CandidateName || "",
-        Email:        c.Email || c.email || c.CandidateEmail || "",
-        City:         c.City || c.city || "",
-        HR:           c["HR Assigned"] || c.HR || c.hr || c.HRName || "",
-        Score:        Number(c.Score ?? c.score ?? c.OverallScore ?? 0),
+      const normalizeCandidate = (item: any): Candidate => {
+        if (!item) return {} as Candidate
         
-        // Pipeline Mapping
-        ResumeScreening: normalizeDecision(c["Resume Decision"] || c["resume_decision"] || c["Resume Screening"] || c["resume_screening"] || c.Decision || c.decision),
-        CallRound:       normalizeDecision(c["Call Decision"] || c["call_decision"] || c["Call Round"] || c["call_round"] || c["Call Status"] || c["call_status"] || c.CallRound || c.call_round),
-        HRRound:         normalizeDecision(c["HR Decision"] || c["hr_decision"] || c["HR Round"] || c["hr_round"] || c.HRRound || c.hr_round),
-        TechInterviewRound: normalizeDecision(c["Tech Decision"] || c["tech_decision"] || c["Technical Interview"] || c["Tech Interview"] || c.TechnicalInterview || c.technical_interview),
-        ManagerInterview: normalizeDecision(c["Manager Decision"] || c["manager_decision"] || c["Final Decision"] || c["Manager Interview"] || c.ManagerInterview || c.manager_interview),
+        // DEEP MERGE: Bring hidden data to the top level
+        let c = { ...item }
+        if (item.json && typeof item.json === "object") c = { ...c, ...item.json }
+        if (item.output && typeof item.output === "object") c = { ...c, ...item.output }
+        if (item.data && typeof item.data === "object" && !Array.isArray(item.data)) c = { ...c, ...item.data }
 
-        Decision:     normalizeDecision(c["Resume Decision"] || c["HR Decision"] || c.Decision || c.decision),
-        FinalDecision: normalizeDecision(c["Manager Decision"] || c.FinalDecision || c.final_decision),
-        TechnicalInterview: normalizeDecision(c["Tech Decision"] || c.TechnicalInterview || c.technical_interview),
-        ResumeLink:   c["Resume Link"] || c.ResumeLink || c.resumeLink || "",
-        Experience:   c.Experience || c.experience || "",
-        RoleApplied:  c.Role || c.RoleApplied || c.roleApplied || "",
-        PhoneNumber:  String(c["Phone Number"] || c.PhoneNumber || c.phone || ""),
-        ResumeSummary: c.Summary || c.ResumeSummary || c.resumeSummary || "",
-        Strengths:    c.Strengths || c.strengths || "",
-        Gaps:         c.Gaps || c.gaps || "",
-        FitAnalysis:  c["Fit Analysis"] || c.FitAnalysis || c.fitAnalysis || "",
-        Comments:     c["HR Comments"] || c.Comments || c.comments || "",
-        AppBooked:    c.AppBooked || c.appBooked || "",
-        TIAssigned:   c["Tech Interviewer"] || c.TIAssigned || c.tiAssigned || "",
-        ManagerAssigned: c["Manager Assigned"] || c.ManagerAssigned || c.managerAssigned || "",
+        // ULTIMATE SELECTOR: Find the best CallLogs field
+        let bestCallLogs = ""
+        let maxMatches = -1
         
-        // HR Meeting Details
-        HRMeetingDate: c["HR Meeting Date"] || c.HRMeetingDate || "",
-        HRMeetingTime: c["HR Meeting Time"] || c.HRMeetingTime || "",
-        HRMeetingLink: c["HR Meeting Link"] || c.HRMeetingLink || "",
-        HREventID:     c["HR Event ID"] || c.HREventID || "",
+        // PRIORITY 1: Explicit "Call Logs" with pattern
+        const explicitKeys = ["Call Logs", "CallLogs", "call_logs", "Call_logs", "callLogs"]
+        for (const k of explicitKeys) {
+          const val = c[k]
+          if (typeof val === "string" && val.length > 5) {
+            const matches = val.match(/\d+[\.\)]\s/g)
+            const count = matches ? matches.length : 0
+            if (count > maxMatches) {
+               maxMatches = count
+               bestCallLogs = val
+            }
+          }
+        }
 
-        // Tech Meeting Details
-        TechMeetingDate: c["Tech Meeting Date"] || c.TechMeetingDate || "",
-        TechMeetingTime: c["Tech Meeting Time"] || c.TechMeetingTime || "",
-        TechMeetingLink: c["Tech Meeting Link"] || c.TechMeetingLink || "",
-        TechEventID:     c["Tech. Event ID"] || c["Tech Event ID"] || c.TechEventID || "",
+        // PRIORITY 2: Any string field with better pattern density (skip known profile-data fields)
+        const skipKeys = new Set(["Data", "data", "json", "output"])
+        if (maxMatches < 1) {
+          for (const [key, val] of Object.entries(c)) {
+            if (skipKeys.has(key)) continue
+            if (typeof val === "string" && val.length > 5) {
+              const matches = val.match(/\d+[\.\)]\s/g)
+              const count = matches ? matches.length : 0
+              if (count > maxMatches) {
+                maxMatches = count
+                bestCallLogs = val
+              }
+            }
+          }
+        }
 
-        // Manager Meeting Details
-        ManagerMeetingDate: c["Manager Meeting Date"] || c.ManagerMeetingDate || "",
-        ManagerMeetingTime: c["Manager Meeting Time"] || c.ManagerMeetingTime || "",
-        ManagerMeetingLink: c["Manager Interview Link"] || c.ManagerMeetingLink || "",
-        ManagerEventID:     c["Manager Event ID"] || c.ManagerEventID || "",
+        // Final fallback for CallLogs if no pattern found at all
+        if (!bestCallLogs) {
+          bestCallLogs = c["Call Logs"] || c.CallLogs || c.call_logs || ""
+        }
 
-        // Followup Stages
-        Call1: c["Call 1"] || c.Call1 || "",
-        Call2: c["Call 2"] || c.Call2 || "",
-        Whatsapp: c["Whatsapp"] || c.whatsapp || "",
-        FollowupMail1: c["Followup Mail 1"] || c.FollowupMail1 || "",
-        FollowupMail2: c["Followup Mail 2"] || c.FollowupMail2 || "",
-        Answered: c["Answered"] || c.answered || "",
-        Data: c["Data"] || c.data || "",
-        MailSent: c["Mail Sent"] || c["MailSent"] || c.mailSent || "",
-        CallRecording: c["Call Recording"] || c["CallRecording"] || c.callRecording || "",
-        HRMeetingMail: c["HR Meeting Mail"] || c.HRMeetingMail || "",
-        HRWAFollowup: c["HR WA Followup"] || c.HRWAFollowup || "",
-        TechMailSent: c["Tech Mail Sent"] || c["TechMailSent"] || c.TechMailSent || "",
-        TechWAFollowup: c["Tech WA Followup"] || c["TechWAFollowup"] || c.TechWAFollowup || "",
-        ManagerMeetingMail: c["Manager Meeting Mail"] || c.ManagerMeetingMail || "",
-        ManagerWAFollowup: c["Manager WA Followup"] || c.ManagerWAFollowup || "",
-        HRMeetingType: c["HR Meeting Type"] || c.HRMeetingType || "",
-        TechMeetingType: c["Tech Meeting Type"] || c.TechMeetingType || "",
-        ManagerMeetingType: c["Manager Meeting Type"] || c.ManagerMeetingType || "",
-        CallLogs: c["Call Logs"] || c.CallLogs || c.call_logs || "",
-      })
+        return {
+          ...c,
+          CandidateID:  c["Candidate ID"] || c.CandidateID || c.id || c.candidateID || "",
+          Name:         c.Name || c.name || c.CandidateName || "",
+          Email:        c.Email || c.email || c.CandidateEmail || "",
+          City:         c.City || c.city || "",
+          Score:        Number(c.Score ?? c.score ?? c.OverallScore ?? 0),
+          
+          // Pipeline Mapping
+          ResumeScreening: normalizeDecision(c["Resume Decision"] || c["resume_decision"] || c["Resume Screening"] || c["resume_screening"] || c.Decision || c.decision),
+          CallRound:       normalizeDecision(c["Call Decision"] || c["call_decision"] || c["Call Round"] || c["call_round"] || c["Call Status"] || c["call_status"] || c.CallRound || c.call_round),
+          HRRound:         normalizeDecision(c["HR Decision"] || c["hr_decision"] || c["HR Round"] || c["hr_round"] || c.HRRound || c.hr_round),
+          TechInterviewRound: normalizeDecision(c["Tech Decision"] || c["tech_decision"] || c["Technical Interview"] || c["Tech Interview"] || c.TechnicalInterview || c.technical_interview),
+          ManagerInterview: normalizeDecision(c["Manager Decision"] || c["manager_decision"] || c["Final Decision"] || c["Manager Interview"] || c.ManagerInterview || c.manager_interview),
+
+          Decision:     normalizeDecision(c["Resume Decision"] || c["HR Decision"] || c.Decision || c.decision),
+          FinalDecision: normalizeDecision(c["Manager Decision"] || c.FinalDecision || c.final_decision),
+          ResumeLink:   c["Resume Link"] || c.ResumeLink || c.resumeLink || "",
+          PhoneNumber:  String(c["Phone Number"] || c.PhoneNumber || c.phone || ""),
+          
+          // Transcripts & Logs
+          Data: c["Data"] || c.data || "",
+          CallRecording: c["Call Recording"] || c["CallRecording"] || c.call_recording || c.recording || "",
+          CallLogs: bestCallLogs,
+
+          // HR Meeting Details
+          HRMeetingDate: c["HR Meeting Date"] || c.HRMeetingDate || "",
+          HRMeetingTime: c["HR Meeting Time"] || c.HRMeetingTime || "",
+          HRMeetingLink: c["HR Meeting Link"] || c.HRMeetingLink || "",
+          HREventID:     c["HR Event ID"] || c.HREventID || "",
+
+          // Tech Meeting Details
+          TechMeetingDate: c["Tech Meeting Date"] || c.TechMeetingDate || "",
+          TechMeetingTime: c["Tech Meeting Time"] || c.TechMeetingTime || "",
+          TechMeetingLink: c["Tech Meeting Link"] || c.TechMeetingLink || "",
+          TechEventID:     c["Tech. Event ID"] || c["Tech Event ID"] || c.TechEventID || "",
+
+          // Manager Meeting Details
+          ManagerMeetingDate: c["Manager Meeting Date"] || c.ManagerMeetingDate || "",
+          ManagerMeetingTime: c["Manager Meeting Time"] || c.ManagerMeetingTime || "",
+          ManagerMeetingLink: c["Manager Interview Link"] || c.ManagerMeetingLink || "",
+          ManagerEventID:     c["Manager Event ID"] || c.ManagerEventID || "",
+      }
+      }
 
       // ─── Extract candidate list from any known response envelope ───────────
       let candidateList: Candidate[] = []
@@ -516,10 +637,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       })
 
       console.log("[v0] Analytics set with", candidateList.length, "candidates")
-    } catch (error: any) {
+    } catch (error) {
       console.error("[v0] Error fetching campaign data:", error)
       toast.error("Error Loading Data", {
-        description: error.message || "Failed to load campaign analytics. Please try again.",
+        description: (error as Error).message || "Failed to load campaign analytics. Please try again.",
       })
     } finally {
       setLoading(false)
@@ -632,6 +753,37 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     return 0
   })
 
+  // ── Dynamic Call Log Columns ───────────────────────────────────────
+  const { dynamicMetricKeys, columnLabels, candidateMetrics } = useMemo(() => {
+    const keySet = new Set<string>()
+    const labelMap: Record<string, string> = {}
+    const metricMap = new Map<string, Record<string, { value: string; label: string }>>()
+    
+    if (!analytics?.candidateList) return { dynamicMetricKeys: [], columnLabels: {}, candidateMetrics: metricMap }
+
+    analytics.candidateList.forEach(c => {
+      const rawText = c.CallLogs || (c as any)["Call Logs"] || (c as any).call_logs || ""
+      const metrics = parseCallLogsForTable(rawText)
+      metricMap.set(c.CandidateID, metrics)
+      
+      Object.entries(metrics).forEach(([key, entry]) => {
+        keySet.add(key)
+        if (!labelMap[key]) labelMap[key] = entry.label
+      })
+    })
+
+    // Sort keys alphabetically by label for consistency
+    const sortedKeys = Array.from(keySet).sort((a, b) => 
+      labelMap[a].localeCompare(labelMap[b])
+    )
+
+    return { 
+      dynamicMetricKeys: sortedKeys, 
+      columnLabels: labelMap,
+      candidateMetrics: metricMap
+    }
+  }, [analytics?.candidateList])
+
   const totalPages = Math.ceil(sortedCandidates.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
@@ -677,11 +829,17 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
     // ── 2. Save to backend in background ───────────────────────────────────
     try {
+      // For final round, send "Hire"/"Reject" instead of "Yes"/"No"
+      const isFinalRound = roundKey === lastRoundKey
+      const backendDecision = isFinalRound
+        ? decision === "Yes" ? "Hire" : decision === "No" ? "Reject" : decision
+        : decision
+
       // Only send the field that was actually changed — not all other existing decisions
       const fieldName = roundMapping[roundKey] || roundKey
       const queryParams = new URLSearchParams({ 
         action: "UpdateDecision",
-        [fieldName]: decision,
+        [fieldName]: backendDecision,
       })
 
       const bodyData = {
@@ -715,21 +873,28 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   }
 
   // Helper to render interactive decision badge
+  const rounds = analytics?.numberOfRounds ?? 3
+  const lastRoundKey = rounds >= 3 ? "ManagerInterview" : rounds === 2 ? "TechInterviewRound" : rounds === 1 ? "HRRound" : "CallRound"
+
   const DecisionBadge = ({ 
     candidate, 
     roundKey, 
     value,
-    readOnly = false 
+    readOnly = false,
+    isFinal = false,
   }: { 
     candidate: Candidate, 
     roundKey: string, 
     value: string | undefined,
-    readOnly?: boolean
+    readOnly?: boolean,
+    isFinal?: boolean,
   }) => {
     const isYes = value?.toLowerCase() === "yes" || value?.toLowerCase() === "pass" || value?.toLowerCase() === "approved" || value?.toLowerCase() === "hired" || value?.toLowerCase() === "passed"
     const isNo = value?.toLowerCase() === "no" || value?.toLowerCase() === "fail" || value?.toLowerCase() === "rejected" || value?.toLowerCase() === "failed"
     
-    const label = value ? (isYes ? "Yes" : isNo ? "No" : value) : "Pending"
+    const yesLabel = isFinal ? "Hire" : "Yes"
+    const noLabel = isFinal ? "Reject" : "No"
+    const label = value ? (isYes ? yesLabel : isNo ? noLabel : value) : "Pending"
     
     const badgeStyle = isYes 
       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30" 
@@ -762,7 +927,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
               handleDecisionUpdate(candidate, roundKey, "Yes")
             }}
           >
-            <Check className="size-3.5" /> Yes
+            <Check className="size-3.5" /> {yesLabel}
           </DropdownMenuItem>
           <DropdownMenuItem 
             className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer flex items-center gap-2"
@@ -771,7 +936,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
               handleDecisionUpdate(candidate, roundKey, "No")
             }}
           >
-            <X className="size-3.5" /> No
+            <X className="size-3.5" /> {noLabel}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -1100,19 +1265,24 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         <TableHead className="text-muted-foreground font-semibold px-4 w-[180px]">Contact</TableHead>
                         <TableHead className="text-muted-foreground font-semibold px-4 w-[120px]">Media</TableHead>
                         <TableHead className="text-muted-foreground font-semibold px-4 flex-grow min-w-[200px]">Key Insights</TableHead>
+                        {dynamicMetricKeys.map((key) => (
+                          <TableHead key={key} className="text-muted-foreground font-semibold text-sm px-4 min-w-[200px]">
+                            {columnLabels[key]}
+                          </TableHead>
+                        ))}
                         <TableHead className="text-muted-foreground font-semibold text-center px-2 w-[80px]">Score</TableHead>
-                        <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
+                        {!isOptimized && (
+                          <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
+                        )}
                         <TableHead className="text-blue-500 font-semibold text-center px-1 w-[80px]">Call</TableHead>
                         {(analytics?.numberOfRounds ?? 3) >= 1 && (
-                          <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">HR Round</TableHead>
+                          <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">Round 1</TableHead>
                         )}
                         {(analytics?.numberOfRounds ?? 3) >= 2 && (
-                          <TableHead className="text-amber-500 font-semibold text-center px-1 w-[80px]">
-                            {(analytics?.numberOfRounds ?? 3) === 2 ? "Final" : "Tech"}
-                          </TableHead>
+                          <TableHead className="text-amber-600 dark:text-amber-400 font-semibold text-center px-1 w-[80px]">Round 2</TableHead>
                         )}
                         {(analytics?.numberOfRounds ?? 3) >= 3 && (
-                          <TableHead className="text-violet-500 font-semibold text-center px-1 w-[80px]">Final</TableHead>
+                          <TableHead className="text-emerald-600 dark:text-emerald-400 font-semibold text-center px-1 w-[80px]">Round 3</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
@@ -1197,23 +1367,41 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 <span className="text-xs text-muted-foreground/40 italic">No insights available</span>
                               )}
                             </TableCell>
+                            {dynamicMetricKeys.map((key) => {
+                              const entry = candidateMetrics.get(candidate.CandidateID)?.[key]
+                              return (
+                                  <TableCell key={key} className="px-4 py-3 min-w-[200px]">
+                                  {entry ? (
+                                    <p className="text-foreground text-base leading-snug line-clamp-3" title={entry.value}>
+                                      {entry.value}
+                                    </p>
+                                  ) : (
+                                    <span className="text-muted-foreground/20 font-mono text-[10px]">—</span>
+                                  )}
+                                </TableCell>
+                              )
+                            })}
                             <TableCell className="text-center px-2">
                               <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
                             </TableCell>
-                            <TableCell className="text-center px-1">
-                              <DecisionBadge 
-                                candidate={candidate} 
-                                roundKey="ResumeScreening" 
-                                value={candidate.ResumeScreening} 
-                              />
-                            </TableCell>
+                            {!isOptimized && (
+                              <TableCell className="text-center px-1">
+                                <DecisionBadge 
+                                  candidate={candidate} 
+                                  roundKey="ResumeScreening" 
+                                  value={candidate.ResumeScreening} 
+                                  isFinal={false}
+                                />
+                              </TableCell>
+                            )}
                             <TableCell className="text-center px-1">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="CallRound" 
                                 value={candidate.CallRound} 
+                                isFinal={lastRoundKey === "CallRound"}
                               />
                             </TableCell>
                             {(analytics?.numberOfRounds ?? 3) >= 1 && (
@@ -1222,6 +1410,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                   candidate={candidate} 
                                   roundKey="HRRound" 
                                   value={candidate.HRRound} 
+                                  isFinal={lastRoundKey === "HRRound"}
                                 />
                               </TableCell>
                             )}
@@ -1231,6 +1420,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                   candidate={candidate} 
                                   roundKey="TechInterviewRound" 
                                   value={candidate.TechInterviewRound} 
+                                  isFinal={lastRoundKey === "TechInterviewRound"}
                                 />
                               </TableCell>
                             )}
@@ -1240,6 +1430,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                   candidate={candidate} 
                                   roundKey="ManagerInterview" 
                                   value={candidate.ManagerInterview} 
+                                  isFinal={lastRoundKey === "ManagerInterview"}
                                 />
                               </TableCell>
                             )}
@@ -1297,33 +1488,51 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                           )}
                         </div>
 
+                        {/* Dynamic Questions (Mobile) */}
+                        {dynamicMetricKeys.filter(key => !!candidateMetrics.get(candidate.CandidateID)?.[key]).length > 0 && (
+                          <div className="space-y-3 py-3 border-b border-border/50">
+                            {dynamicMetricKeys.map((key) => {
+                              const entry = candidateMetrics.get(candidate.CandidateID)?.[key]
+                              if (!entry) return null
+                              return (
+                                  <div key={key} className="space-y-1">
+                                  <p className="text-xs text-muted-foreground uppercase font-bold">{columnLabels[key]}</p>
+                                  <p className="text-base text-foreground leading-snug">{entry.value}</p>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
                         <div className="space-y-2">
                           <p className="text-[10px] text-muted-foreground uppercase font-bold">Pipeline Status</p>
                           <div className="flex flex-wrap gap-2">
-                            <div className="space-y-1">
-                              <p className="text-[8px] text-slate-500 uppercase">Resume</p>
-                              <DecisionBadge candidate={candidate} roundKey="ResumeScreening" value={candidate.ResumeScreening} />
-                            </div>
+                            {!isOptimized && (
+                              <div className="space-y-1">
+                                <p className="text-[8px] text-slate-500 uppercase">Resume</p>
+                                <DecisionBadge candidate={candidate} roundKey="ResumeScreening" value={candidate.ResumeScreening} isFinal={false} />
+                              </div>
+                            )}
                             <div className="space-y-1">
                               <p className="text-[8px] text-slate-500 uppercase">Call</p>
-                              <DecisionBadge candidate={candidate} roundKey="CallRound" value={candidate.CallRound} />
+                              <DecisionBadge candidate={candidate} roundKey="CallRound" value={candidate.CallRound} isFinal={lastRoundKey === "CallRound"} />
                             </div>
                             {(analytics?.numberOfRounds ?? 3) >= 1 && (
                               <div className="space-y-1">
-                                <p className="text-[8px] text-slate-500 uppercase">HR</p>
-                                <DecisionBadge candidate={candidate} roundKey="HRRound" value={candidate.HRRound} />
+                                <p className="text-[8px] text-slate-500 uppercase">R1</p>
+                                <DecisionBadge candidate={candidate} roundKey="HRRound" value={candidate.HRRound} isFinal={lastRoundKey === "HRRound"} />
                               </div>
                             )}
                             {(analytics?.numberOfRounds ?? 3) >= 2 && (
                               <div className="space-y-1">
-                                <p className="text-[8px] text-slate-500 uppercase">{(analytics?.numberOfRounds ?? 3) === 2 ? "Final" : "Tech"}</p>
-                                <DecisionBadge candidate={candidate} roundKey="TechInterviewRound" value={candidate.TechInterviewRound} />
+                                <p className="text-[8px] text-slate-500 uppercase">R2</p>
+                                <DecisionBadge candidate={candidate} roundKey="TechInterviewRound" value={candidate.TechInterviewRound} isFinal={lastRoundKey === "TechInterviewRound"} />
                               </div>
                             )}
                             {(analytics?.numberOfRounds ?? 3) >= 3 && (
                               <div className="space-y-1">
-                                <p className="text-[8px] text-slate-500 uppercase">Final</p>
-                                <DecisionBadge candidate={candidate} roundKey="ManagerInterview" value={candidate.ManagerInterview} />
+                                <p className="text-[8px] text-slate-500 uppercase">R3</p>
+                                <DecisionBadge candidate={candidate} roundKey="ManagerInterview" value={candidate.ManagerInterview} isFinal={lastRoundKey === "ManagerInterview"} />
                               </div>
                             )}
                           </div>
@@ -1423,6 +1632,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         campaignName={campaignName}
         onDecisionUpdate={fetchCampaignData}
         numberOfRounds={analytics?.numberOfRounds ?? 3}
+        isOptimized={isOptimized}
       />
       <DeleteCampaignDialog
         isOpen={isDeleteDialogOpen}
@@ -1544,89 +1754,43 @@ function ChatTranscript({ data, candidateName }: { data: string, candidateName: 
 }
 
 function ParsedIntelligence({ logs }: { logs: string }) {
-  const LABEL_TO_KEY: Record<string, string> = {
-    "experience": "experience",
-    "responsibility fit": "responsibilityfit",
-    "responsibilityfit": "responsibilityfit",
-    "location": "location",
-    "targets": "targets",
-    "notice period": "noticeperiod",
-    "noticeperiod": "noticeperiod",
-    "availability": "availability",
-    "salary": "salary",
-    "salary expectation": "salary",
-    "interview": "interview"
-  };
+  const dynamicMetrics = parseCallLogsForTable(logs);
 
-  const METRIC_COLUMNS = [
-    { key: "experience",        label: "Experience",         icon: Briefcase },
-    { key: "responsibilityfit", label: "Responsibility Fit", icon: CheckCircle2 },
-    { key: "location",          label: "Location",           icon: MapPin },
-    { key: "targets",           label: "Targets",            icon: Target },
-    { key: "noticeperiod",      label: "Notice Period",      icon: Clock },
-    { key: "availability",      label: "Availability",       icon: Clock },
-    { key: "salary",            label: "Salary",             icon: DollarSign },
-    { key: "interview",         label: "Interview",          icon: MessageSquare }
-  ];
-
-  const parseCallLogs = (raw: string): Record<string, string> => {
-    const result: Record<string, string> = {};
-    if (!raw) return result;
-    const str = String(raw);
-
-    const lines = str.split("\n");
-    for (const line of lines) {
-      const colonIndex = line.indexOf(":");
-      if (colonIndex > 0) {
-        const rawLabel = line.slice(0, colonIndex).trim().toLowerCase();
-        const content = line.slice(colonIndex + 1).trim();
-        const internalKey = LABEL_TO_KEY[rawLabel];
-        if (internalKey && content) {
-          result[internalKey] = content;
-        }
-      }
+  if (Object.keys(dynamicMetrics).length === 0) {
+    if (logs && logs.trim().length > 0) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-amber-500 mb-2">
+            <AlertCircle className="size-4" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Raw Call Interface Data</span>
+          </div>
+          <div className="bg-muted/30 border border-border/80 rounded-xl p-5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground/80 italic">
+            {logs}
+          </div>
+          <p className="text-[9px] text-muted-foreground text-center">Note: Structured parsing failed, showing raw content from "Call Logs".</p>
+        </div>
+      );
     }
-
-    if (Object.keys(result).length === 0) {
-      const labelsPattern = Object.keys(LABEL_TO_KEY).join("|");
-      const regex = new RegExp(`(${labelsPattern})\\s*:\\s*([^\\n]+)`, "gi");
-      let match;
-      while ((match = regex.exec(str)) !== null) {
-        const internalKey = LABEL_TO_KEY[match[1].toLowerCase()];
-        if (internalKey) result[internalKey] = match[2].trim();
-      }
-    }
-
-    return result;
-  };
-
-  const metrics = parseCallLogs(logs);
-
-  if (Object.keys(metrics).length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <FileText className="size-12 mb-4 opacity-20" />
-        <p className="text-sm font-semibold">No intelligence metrics extracted</p>
-        <p className="text-xs opacity-60 mt-1">This candidate call record may not contain formatted call logs.</p>
+        <p className="text-sm font-semibold">No intelligence metrics found</p>
+        <p className="text-xs opacity-60 mt-1">Check "Raw Transcript" tab or verify the "Call Logs" column in your data source.</p>
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {METRIC_COLUMNS.map((col) => {
-        const val = metrics[col.key];
-        if (!val) return null;
-        return (
-          <div key={col.key} className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col gap-2 transition-all hover:bg-muted/40">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <col.icon className="size-4 text-emerald-500" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">{col.label}</span>
-            </div>
-            <p className="text-sm font-semibold text-foreground leading-relaxed">{val}</p>
+      {Object.values(dynamicMetrics).map((metric, idx) => (
+        <div key={idx} className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col gap-2 transition-all hover:bg-muted/40 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground border-b border-border/30 pb-2 mb-1">
+            <MessageSquare className="size-3 text-emerald-500" />
+            <span className="text-[9px] font-black uppercase tracking-widest leading-none">{metric.label}</span>
           </div>
-        );
-      })}
+          <p className="text-sm font-semibold text-foreground leading-relaxed pl-5">{metric.value}</p>
+        </div>
+      ))}
     </div>
   );
 }
