@@ -117,6 +117,7 @@ interface Candidate {
   TechMeetingType?: string
   ManagerMeetingType?: string
   CallLogs?: string
+  Call_time?: string
 }
 
 interface CampaignAnalytics {
@@ -364,7 +365,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       console.log("[v0] Raw webhook response:", JSON.stringify(rawData).substring(0, 500))
 
       // ─── Extract Campaign Metadata ───────────────────────────────────────
-      let campaignRounds = rawData.NumberOfRounds || rawData.numberOfRounds || 3
+      let campaignRounds = Number(rawData.NumberOfRounds || rawData.numberOfRounds || 3)
       
       // If metadata not in certain campaign response, try fetching from campaigns list
       if (!rawData.NumberOfRounds && !rawData.numberOfRounds) {
@@ -496,6 +497,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
           ManagerMeetingTime: c["Manager Meeting Time"] || c.ManagerMeetingTime || "",
           ManagerMeetingLink: c["Manager Interview Link"] || c.ManagerMeetingLink || "",
           ManagerEventID:     c["Manager Event ID"] || c.ManagerEventID || "",
+          Call_time:          c["Call_time"] || c.Call_time || c["Call Time"] || c.call_time || "",
       }
       }
 
@@ -773,9 +775,12 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     })
 
     // Sort keys alphabetically by label for consistency
-    const sortedKeys = Array.from(keySet).sort((a, b) => 
-      labelMap[a].localeCompare(labelMap[b])
-    )
+    const excludedKeys = new Set(['education', 'experience', 'keyskills', 'skills'])
+    const sortedKeys = Array.from(keySet)
+      .filter(key => !excludedKeys.has(key))
+      .sort((a, b) => 
+        labelMap[a].localeCompare(labelMap[b])
+      )
 
     return { 
       dynamicMetricKeys: sortedKeys, 
@@ -1264,13 +1269,13 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         <TableHead className="text-muted-foreground font-semibold px-4 w-[200px]">Candidate</TableHead>
                         <TableHead className="text-muted-foreground font-semibold px-4 w-[180px]">Contact</TableHead>
                         <TableHead className="text-muted-foreground font-semibold px-4 w-[120px]">Media</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold px-4 flex-grow min-w-[200px]">Key Insights</TableHead>
                         {dynamicMetricKeys.map((key) => (
                           <TableHead key={key} className="text-muted-foreground font-semibold text-sm px-4 min-w-[200px]">
                             {columnLabels[key]}
                           </TableHead>
                         ))}
                         <TableHead className="text-muted-foreground font-semibold text-center px-2 w-[80px]">Score</TableHead>
+                        <TableHead className="text-muted-foreground font-semibold text-center px-4 w-[100px]">Call Time</TableHead>
                         {!isOptimized && (
                           <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
                         )}
@@ -1294,13 +1299,6 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             : candidate.Email
                               ? candidate.Email.split("@")[0]
                               : "Unnamed Candidate"
-
-                        const hasInsights = candidate.Strengths || candidate.Gaps || candidate.FitAnalysis
-                        const insightPreview = candidate.Strengths
-                          ? candidate.Strengths.substring(0, 100) + (candidate.Strengths.length > 100 ? "..." : "")
-                          : candidate.FitAnalysis
-                            ? candidate.FitAnalysis.substring(0, 100) + (candidate.FitAnalysis.length > 100 ? "..." : "")
-                            : null
 
                         return (
                           <TableRow
@@ -1356,21 +1354,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="px-4 w-[30%] max-w-[250px]">
-                              {hasInsights ? (
-                                <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2" title={insightPreview || ""}>
-                                  {insightPreview || (
-                                    <span className="text-muted-foreground italic">Click to view insights</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/40 italic">No insights available</span>
-                              )}
-                            </TableCell>
                             {dynamicMetricKeys.map((key) => {
                               const entry = candidateMetrics.get(candidate.CandidateID)?.[key]
                               return (
-                                  <TableCell key={key} className="px-4 py-3 min-w-[200px]">
+                                <TableCell key={key} className="px-4 py-3 min-w-[200px]">
                                   {entry ? (
                                     <p className="text-foreground text-base leading-snug line-clamp-3" title={entry.value}>
                                       {entry.value}
@@ -1385,6 +1372,9 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
+                            </TableCell>
+                            <TableCell className="text-center px-4 text-xs font-medium text-muted-foreground">
+                              {candidate.Call_time || "—"}
                             </TableCell>
                             {!isOptimized && (
                               <TableCell className="text-center px-1">
@@ -1474,6 +1464,13 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Score</p>
                           </div>
                         </div>
+
+                        {candidate.Call_time && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+                            <Clock className="size-3.5" />
+                            <span>Call Time: <span className="font-semibold text-foreground">{candidate.Call_time}</span></span>
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-3 border-y border-border/50">
                           <div className="space-y-1">

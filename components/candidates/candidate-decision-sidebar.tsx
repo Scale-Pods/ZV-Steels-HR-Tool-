@@ -1330,8 +1330,11 @@ function StructuredValue({
             })()}
 
             {/* ── Rounds 3-5: HR, Tech, Manager (editable) ── */}
-            {visibleRounds.slice(1).map((round, i) => {
-              const isLastRound = i === visibleRounds.slice(1).length - 1
+            {/* When optimized: visibleRounds has NO Resume entry, so use slice(0) to show ALL rounds */}
+            {/* When NOT optimized: Resume Screening is rendered separately above, skip it with slice(1) */}
+            {(isOptimized ? visibleRounds : visibleRounds.slice(1)).map((round, i) => {
+              const editableRounds = isOptimized ? visibleRounds : visibleRounds.slice(1)
+              const isLastRound = i === editableRounds.length - 1
               const actualIndex = isOptimized ? i + 1 : i + 2 // offset: Call at 0 when optimized, else Resume=0, Call=1
               const value = formData[round.valueKey] || ""
               const isExpanded = expandedRound === actualIndex

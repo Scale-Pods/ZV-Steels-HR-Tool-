@@ -441,7 +441,8 @@ export default function CallAnalysisPage() {
         if (!labelMap[key]) labelMap[key] = entry.label
       }
     }
-    const keys = Array.from(keySet)
+    const excludedKeys = new Set(['education', 'experience', 'keyskills', 'skills'])
+    const keys = Array.from(keySet).filter(key => !excludedKeys.has(key))
     // ROOT FIX: If no dynamic keys were found but we have dataRows, add a 'RAW DATA' column
     if (keys.length === 0 && dataRows.length > 0) {
       keys.push("raw_fallback")

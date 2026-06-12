@@ -17,6 +17,10 @@ import {
   CheckCircle,
   Save,
   Clock,
+  PhoneCall,
+  MessageSquare,
+  Star,
+  ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -207,11 +211,13 @@ export function CandidateDetailSidebar({
     // 3: Tech
     // 4: Manager
     const visibleRounds = [rounds[0], rounds[1]] // Always show Resume and Call
-    if (numberOfRounds >= 1) visibleRounds.push(rounds[2]) // HR
-    if (numberOfRounds >= 2) {
-      visibleRounds.push(rounds[3]) // R2
+    
+    // Add R1, R2, R3 if they are in the candidate data or required by numberOfRounds
+    if (numberOfRounds >= 1 || candidate.HRRound) visibleRounds.push(rounds[2]) 
+    if (numberOfRounds >= 2 || candidate.TechInterviewRound) {
+      visibleRounds.push(rounds[3]) 
     }
-    if (numberOfRounds >= 3) visibleRounds.push(rounds[4]) // Manager
+    if (numberOfRounds >= 3 || candidate.ManagerInterview) visibleRounds.push(rounds[4])
 
     const stages = visibleRounds.map((r) => {
       // @ts-ignore
@@ -392,32 +398,13 @@ export function CandidateDetailSidebar({
   const callMetrics = useMemo(() => {
     if (!candidate) return []
     
-    // ULTIMATE SELECTOR: Find the field with most 1) pattern matches
-    let bestText = ""
-    let maxMatches = -1
-    for (const [key, val] of Object.entries(candidate)) {
-      if (typeof val === "string" && val.length > 5) {
-        const matches = (val as string).match(/\d+[\.\)]\s/g)
-        const count = matches ? matches.length : 0
-        let score = count
-        if (count > 0 && /log|call|intel/i.test(key)) score += 0.5
-        if (score > maxMatches) {
-          maxMatches = score
-          bestText = val as string
-        }
-      }
-    }
-    
-    // Fallback if no pattern found
-    if (!bestText) {
-      bestText =
-        candidate["Call Logs"] ??
-        candidate.CallLogs ??
-        candidate.call_logs ??
-        candidate.Data ??
-        candidate.data ??
-        ""
-    }
+    // STRICT SELECTOR: Only the explicit call log columns.
+    // Do NOT use Data/data — those hold resume screening summaries (Key Skills, Experience, Education).
+    const bestText =
+      candidate["Call Logs"] ??
+      candidate.CallLogs ??
+      candidate.call_logs ??
+      ""
     
     return parseCallLogs(bestText)
   }, [candidate])
@@ -442,7 +429,7 @@ export function CandidateDetailSidebar({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full md:w-[650px] lg:w-[800px] xl:w-[900px] bg-slate-950/95 backdrop-blur-2xl border-l border-white/10 shadow-[-20px_0_40px_-15px_rgba(0,0,0,0.5)] z-50 flex flex-col"
+            className="fixed right-0 top-0 h-full w-full md:w-[650px] lg:w-[800px] xl:w-[900px] bg-background/95 backdrop-blur-2xl border-l border-border shadow-[-20px_0_40px_-15px_rgba(0,0,0,0.5)] z-50 flex flex-col"
           >
             {candidate && (
               <div className="flex flex-col h-full">
@@ -457,17 +444,17 @@ export function CandidateDetailSidebar({
                     { colors: { active: "from-fuchsia-500 to-pink-600", glow: "shadow-fuchsia-500/40", text: "text-fuchsia-300", bar: "bg-fuchsia-500", pill: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30" } },
                   ]
                   return (
-                    <div className="bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-6 pt-6 pb-6 shadow-2xl shadow-black/40 shrink-0">
+                    <div className="bg-background/80 backdrop-blur-md border-b border-border px-6 pt-6 pb-6 shadow-2xl shadow-black/40 shrink-0">
                       {/* Close button row */}
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Candidate Dossier / Pipeline</p>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60">Candidate Dossier / Pipeline</p>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={onClose}
-                          className="size-10 text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                          className="size-10 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all"
                         >
                           <X className="size-5" />
                         </Button>
@@ -502,15 +489,15 @@ export function CandidateDetailSidebar({
                                       : isRejected
                                         ? "bg-red-500/20 border-red-500/60 shadow-lg shadow-red-500/30"
                                         : isCurrent
-                                          ? "bg-slate-800 border-dashed border-slate-500 shadow-lg shadow-slate-500/20"
-                                          : "bg-slate-800/60 border-slate-700/40"
+                                          ? "bg-muted border-dashed border-muted-foreground/50 shadow-lg shadow-black/20"
+                                          : "bg-muted/60 border-border"
                                   )}>
                                     {isPassed ? (
                                       <CheckCircle className="size-5 text-white drop-shadow" />
                                     ) : isRejected ? (
                                       <X className="size-5 text-red-400" />
                                     ) : (
-                                      <Icon className={cn("size-4", isCurrent ? cfg.colors.text : "text-slate-600")} />
+                                      <Icon className={cn("size-4", isCurrent ? cfg.colors.text : "text-muted-foreground/60")} />
                                     )}
                                   </div>
                                   {/* Pulse ring for current stage */}
@@ -518,7 +505,7 @@ export function CandidateDetailSidebar({
                                     <motion.div
                                       animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
                                       transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                                      className="absolute inset-0 rounded-full border border-slate-400/50"
+                                      className="absolute inset-0 rounded-full border border-primary/50"
                                     />
                                   )}
                                 </div>
@@ -526,7 +513,7 @@ export function CandidateDetailSidebar({
                                 {/* Label */}
                                 <span className={cn(
                                   "text-[10px] font-bold tracking-wide truncate max-w-[64px] text-center",
-                                  isPassed ? cfg.colors.text : isRejected ? "text-red-400" : isCurrent ? "text-slate-300" : "text-slate-600"
+                                  isPassed ? cfg.colors.text : isRejected ? "text-red-400" : isCurrent ? "text-foreground" : "text-muted-foreground/60"
                                 )}>
                                   {stage.label}
                                 </span>
@@ -546,13 +533,13 @@ export function CandidateDetailSidebar({
                                   <motion.span
                                     animate={{ opacity: [1, 0.4, 1] }}
                                     transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-slate-700/60 text-slate-400 border-slate-600/50"
+                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-primary/10 text-primary border-primary/20"
                                   >
                                     Active
                                   </motion.span>
                                 )}
                                 {isPending && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-slate-800/60 text-slate-600 border-slate-700/30">
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide bg-muted text-muted-foreground border-border">
                                     Pending
                                   </span>
                                 )}
@@ -560,7 +547,7 @@ export function CandidateDetailSidebar({
 
                               {/* Connector bar */}
                               {!isLast && (
-                                <div className="flex-1 mx-1 h-0.5 min-w-[8px] relative overflow-hidden rounded-full bg-slate-700/40">
+                                <div className="flex-1 mx-1 h-0.5 min-w-[8px] relative overflow-hidden rounded-full bg-border">
                                   {isPassed && (
                                     <motion.div
                                       initial={{ scaleX: 0 }}
@@ -582,10 +569,10 @@ export function CandidateDetailSidebar({
 
                 <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
                 {/* Header Section */}
-                <div className="flex items-center gap-6 pb-8 border-b border-white/5">
+                <div className="flex items-center gap-6 pb-8 border-b border-border">
                   <div className="relative group">
                     <div className="absolute -inset-1.5 bg-linear-to-tr from-primary to-blue-600 rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity" />
-                    <div className="relative size-20 rounded-full bg-slate-900 border-2 border-white/10 flex items-center justify-center text-white text-3xl font-black shadow-2xl shrink-0">
+                    <div className="relative size-20 rounded-full bg-muted border-2 border-border flex items-center justify-center text-foreground text-3xl font-black shadow-2xl shrink-0">
                       {candidate.Name && candidate.Name.trim() !== ""
                         ? candidate.Name.charAt(0).toUpperCase()
                         : candidate.Email
@@ -594,7 +581,7 @@ export function CandidateDetailSidebar({
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-3 truncate mb-1">
+                    <h2 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3 truncate mb-1">
                       {candidate.Name && candidate.Name.trim() !== "" ? (
                         candidate.Name
                       ) : (
@@ -607,7 +594,7 @@ export function CandidateDetailSidebar({
                       )}
                     </h2>
                     <div className="flex items-center gap-3">
-                      <p className="text-white/40 text-base font-medium truncate">{candidate.Email || "No email provided"}</p>
+                      <p className="text-muted-foreground text-sm font-medium truncate">{candidate.Email || "No email provided"}</p>
                       {candidate.RoleApplied && (
                         <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">
                           {candidate.RoleApplied}
@@ -618,166 +605,129 @@ export function CandidateDetailSidebar({
                 </div>
 
                 {/* Quick Info HUD */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
                     { icon: Mail, label: "Email", value: candidate.Email || "N/A", color: "text-blue-400", bg: "bg-blue-400/5" },
                     { icon: Phone, label: "Phone", value: candidate.PhoneNumber || "N/A", color: "text-emerald-400", bg: "bg-emerald-400/5" },
                     { icon: MapPin, label: "Location", value: candidate.City || "N/A", color: "text-violet-400", bg: "bg-violet-400/5" },
-                    { icon: Briefcase, label: "Exp", value: candidate.Experience || "N/A", color: "text-amber-400", bg: "bg-amber-400/5" },
                   ].map((item, idx) => (
-                    <div key={idx} className={cn("p-4 rounded-2xl border border-white/5 flex flex-col gap-3 transition-colors hover:bg-white/5", item.bg)}>
+                    <div key={idx} className={cn("p-4 rounded-2xl border border-border flex flex-col gap-3 transition-colors hover:bg-muted/50", item.bg)}>
                       <item.icon className={cn("size-5", item.color)} />
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">{item.label}</p>
-                        <p className="text-xs font-bold text-white/90 truncate">{item.value}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">{item.label}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{item.value}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Score and Decisions */}
-                <Card className="bg-slate-800/50 border-slate-700/50">
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/20 to-blue-500/20">
-                          <Award className="size-6 text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-400">Candidate Score</p>
-                          <p className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
-                            {typeof candidate.Score === "number"
-                              ? candidate.Score.toFixed(2)
-                              : candidate.Score || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <div>
-                          <p className="text-xs text-slate-400 mb-1">Decision</p>
-                          <Badge className={getDecisionColor(candidate.Decision || "")}>
-                            {getDecisionIcon(candidate.Decision || "")} {candidate.Decision || "Pending"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator className="bg-slate-700/50" />
-
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-slate-400">HR Assigned</p>
-                        <p className="text-white font-medium">
-                          {candidate.HR && candidate.HR.trim() !== "" && candidate.HR !== "Unassigned"
-                            ? candidate.HR.includes("@")
-                              ? candidate.HR.split("@")[0]
-                              : candidate.HR
-                            : "Unassigned"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Status</p>
-                        <p className="text-white font-medium">{candidate.TechnicalInterview || "Pending"}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Tabs */}
+                {/* Tabs — Premium segmented control */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="flex items-center gap-1 bg-white/5 border border-white/5 p-1 rounded-2xl">
-                    {["profile", "call-logs", "evaluation", "resume", "decision"].map((tab) => (
-                      <TabsTrigger 
-                        key={tab} 
-                        value={tab} 
-                        className="flex-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white/60 transition-all py-2.5"
+                  <TabsList className="grid grid-cols-5 bg-muted/60 border border-border p-1 rounded-2xl h-auto gap-0.5">
+                    {([
+                      { value: "profile",    label: "Profile",    icon: User },
+                      { value: "call-logs",  label: "Call Logs",  icon: PhoneCall },
+                      { value: "evaluation", label: "Evaluation", icon: Star },
+                      { value: "resume",     label: "Resume",     icon: FileText },
+                      { value: "decision",   label: "Decision",   icon: ClipboardList },
+                    ] as { value: string; label: string; icon: React.ElementType }[]).map(({ value, label, icon: Icon }) => (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        className={cn(
+                          "flex flex-col items-center gap-1 rounded-xl py-2.5 px-1 transition-all duration-200 border border-transparent",
+                          "text-muted-foreground hover:text-foreground",
+                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border-border"
+                        )}
                       >
-                        {tab.replace("-", " ")}
+                        <Icon className="size-4 shrink-0" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider leading-none hidden sm:block">{label}</span>
                       </TabsTrigger>
                     ))}
                   </TabsList>
 
                   <TabsContent value="profile" className="space-y-4 mt-4">
-                    <Card className="bg-slate-800/50 border-slate-700/50">
-                      <CardContent className="p-4 space-y-3">
-                        <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Card className="bg-card border-border shadow-sm">
+                      <CardContent className="p-4 space-y-4">
+                        <h3 className="font-black text-foreground flex items-center gap-2 text-[11px] uppercase tracking-[0.2em]">
                           <User className="size-4 text-emerald-400" />
                           Basic Information
                         </h3>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Full Name</span>
-                            <span className="text-white font-medium flex items-center gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Full Name</span>
+                            <span className="text-foreground font-bold flex items-center gap-2 text-sm">
                               {candidate.Name && candidate.Name.trim() !== "" ? (
                                 candidate.Name
                               ) : (
-                                <>
-                                  <AlertCircle className="size-3 text-amber-400" />
-                                  <span className="text-amber-400">Name not provided</span>
-                                </>
+                                <span className="text-amber-500 italic">Name not provided</span>
                               )}
                             </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Candidate ID</span>
-                            <span className="text-white font-mono">{candidate.CandidateID || "N/A"}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Candidate ID</span>
+                            <span className="text-foreground font-mono font-bold text-sm">{candidate.CandidateID || "N/A"}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Role Applied</span>
-                            <span className="text-white">{candidate.RoleApplied || "Not specified"}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Role Applied</span>
+                            <span className="text-foreground font-bold text-sm">{candidate.RoleApplied || "Not specified"}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">City</span>
-                            <span className="text-white">{candidate.City || "Not specified"}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">City</span>
+                            <span className="text-foreground font-bold text-sm">{candidate.City || "Not specified"}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Experience</span>
-                            <span className="text-white">{candidate.Experience || "Not specified"}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Call Time</span>
+                            <span className="text-foreground font-bold text-sm">{candidate.Call_time || "—"}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Email</span>
-                            <span className="text-white truncate max-w-[200px]">
-                              {candidate.Email || "Not provided"}
-                            </span>
-                          </div>
-                          {candidate.PhoneNumber && (
-                            <div className="flex justify-between">
-                              <span className="text-slate-400">Phone</span>
-                              <span className="text-white">{candidate.PhoneNumber}</span>
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
 
                     {candidate.ResumeSummary && (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
+                      <Card className="bg-muted/50 border-border">
                         <CardContent className="p-4 space-y-3">
-                          <h3 className="font-semibold text-white">Resume Summary</h3>
-                          <p className="text-sm text-slate-300 leading-relaxed">{candidate.ResumeSummary}</p>
+                          <h3 className="font-semibold text-foreground">Resume Summary</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{candidate.ResumeSummary}</p>
                         </CardContent>
                       </Card>
                     )}
                   </TabsContent>
                     <TabsContent value="call-logs" className="space-y-4 mt-4">
+                      {/* Call Recording — only rendered if URL present */}
                       {(() => {
-                        const recordingUrl = candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording;
-                        if (!recordingUrl) return null;
+                        const recordingUrl =
+                          candidate["Call Recording"] ||
+                          candidate.CallRecording ||
+                          candidate.call_recording ||
+                          candidate.Recording ||
+                          candidate.recording
+                        if (!recordingUrl) return null
                         return (
-                          <Card className="bg-slate-800/50 border-white/5">
+                          <Card className="bg-muted/50 border-border">
                             <CardContent className="p-5 space-y-3">
-                              <h3 className="font-black text-white/80 flex items-center gap-2 text-[11px] uppercase tracking-widest">
-                                <Phone className="size-4 text-primary" />
-                                Call Recording
-                              </h3>
-                              <audio controls src={recordingUrl} className="w-full [&::-webkit-media-controls-panel]:bg-slate-800 [&::-webkit-media-controls-panel]:rounded-xl" />
+                              <div className="flex items-center gap-2">
+                                <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                                  <PhoneCall className="size-4 text-primary" />
+                                </div>
+                                <span className="font-bold text-foreground text-sm">Call Recording</span>
+                              </div>
+                              <audio
+                                controls
+                                src={recordingUrl}
+                                className="w-full h-10 [&::-webkit-media-controls-panel]:bg-muted [&::-webkit-media-controls-panel]:rounded-xl"
+                              />
                             </CardContent>
                           </Card>
-                        );
+                        )
                       })()}
 
+                      {/* Call Log Q&A pairs — strictly from Data / Call Logs columns */}
                       {callMetrics.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 px-1 pb-1">
+                            Call Intelligence
+                          </p>
                           {callMetrics.map(({ label, value }, idx) => {
                             const vLower = value.toLowerCase().trim()
                             const isYes = vLower === "yes" || vLower.startsWith("yes,") || vLower.startsWith("yes ")
@@ -785,93 +735,104 @@ export function CandidateDetailSidebar({
                             return (
                               <div
                                 key={idx}
-                                className="group rounded-2xl border border-white/5 bg-white/2 hover:bg-white/4 transition-colors p-5 space-y-2"
+                                className="group flex items-start gap-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4"
                               >
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-white/50 transition-colors">
-                                  {label}
-                                </p>
-                                {isYes ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-sm font-bold text-emerald-400">{value}</span>
-                                  </div>
-                                ) : isNo ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="size-2 rounded-full bg-red-500" />
-                                    <span className="text-sm font-bold text-red-400">{value}</span>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-white/90 font-medium leading-relaxed">{value}</p>
-                                )}
+                                {/* Index badge */}
+                                <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                                  <span className="text-[9px] font-black text-muted-foreground">{idx + 1}</span>
+                                </div>
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                                    {label}
+                                  </p>
+                                  {isYes ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{value}</span>
+                                    </div>
+                                  ) : isNo ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="size-2 rounded-full bg-red-400" />
+                                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">{value}</span>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-foreground leading-relaxed">{value}</p>
+                                  )}
+                                </div>
                               </div>
                             )
                           })}
                         </div>
                       ) : (
-                        <Card className="bg-white/2 border-white/5">
-                          <CardContent className="p-10 text-center">
-                            <Phone className="size-10 mx-auto mb-4 text-white/10" />
-                            <p className="text-white/30 text-sm font-medium">No call log data available for this candidate.</p>
-                            <p className="text-white/20 text-xs mt-1">Call Logs will appear here once the candidate has been contacted.</p>
-                          </CardContent>
-                        </Card>
+                        /* No recording AND no call data — show empty state */
+                        !(candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording) && (
+                          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                            <div className="size-14 rounded-2xl bg-muted flex items-center justify-center">
+                              <PhoneCall className="size-7 text-muted-foreground/40" />
+                            </div>
+                            <p className="text-muted-foreground/70 text-sm font-medium">No call data yet</p>
+                            <p className="text-muted-foreground/40 text-xs max-w-[220px] leading-relaxed">
+                              Call logs and recordings will appear here once this candidate has been contacted.
+                            </p>
+                          </div>
+                        )
                       )}
                     </TabsContent>
 
 
                   <TabsContent value="evaluation" className="space-y-4 mt-4">
                     {candidate.Strengths && (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
+                      <Card className="bg-muted/50 border-border">
                         <CardContent className="p-4 space-y-3">
-                          <h3 className="font-semibold text-emerald-400 flex items-center gap-2">
+                          <h3 className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                             <Award className="size-4" />
                             Strengths
                           </h3>
-                          <p className="text-sm text-slate-300 leading-relaxed">{candidate.Strengths}</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{candidate.Strengths}</p>
                         </CardContent>
                       </Card>
                     )}
 
                     {candidate.Gaps && (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
+                      <Card className="bg-muted/50 border-border">
                         <CardContent className="p-4 space-y-3">
-                          <h3 className="font-semibold text-amber-400 flex items-center gap-2">
+                          <h3 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2">
                             <AlertCircle className="size-4" />
                             Areas for Improvement
                           </h3>
-                          <p className="text-sm text-slate-300 leading-relaxed">{candidate.Gaps}</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{candidate.Gaps}</p>
                         </CardContent>
                       </Card>
                     )}
 
                     {candidate.FitAnalysis && (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
+                      <Card className="bg-muted/50 border-border">
                         <CardContent className="p-4 space-y-3">
-                          <h3 className="font-semibold text-blue-400 flex items-center gap-2">
+                          <h3 className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
                             <FileText className="size-4" />
                             Fit Analysis
                           </h3>
-                          <p className="text-sm text-slate-300 leading-relaxed">{candidate.FitAnalysis}</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{candidate.FitAnalysis}</p>
                         </CardContent>
                       </Card>
                     )}
 
                     {candidate.Comments && (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
+                      <Card className="bg-muted/50 border-border">
                         <CardContent className="p-4 space-y-3">
-                          <h3 className="font-semibold text-violet-400">Comments</h3>
-                          <p className="text-sm text-slate-300 leading-relaxed">{candidate.Comments}</p>
+                          <h3 className="font-semibold text-violet-600 dark:text-violet-400">Comments</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{candidate.Comments}</p>
                         </CardContent>
                       </Card>
                     )}
                   </TabsContent>
 
                   <TabsContent value="resume" className="space-y-4 mt-4">
-                    <Card className="bg-slate-800/50 border-slate-700/50">
+                    <Card className="bg-muted/50 border-border">
                       <CardContent className="p-4 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-white flex items-center gap-2">
-                            <FileText className="size-4 text-emerald-400" />
+                          <h3 className="font-semibold text-foreground flex items-center gap-2">
+                            <FileText className="size-4 text-emerald-500 dark:text-emerald-400" />
                             Resume Preview
                           </h3>
                           <div className="flex gap-2">
@@ -879,7 +840,7 @@ export function CandidateDetailSidebar({
                               variant="outline"
                               size="sm"
                               onClick={handleDownloadResume}
-                              className="gap-2 bg-slate-700/50 border-slate-600/50 hover:bg-slate-700"
+                              className="gap-2 bg-muted/50 border-border hover:bg-muted"
                             >
                               <ExternalLink className="size-4" />
                               Open Full
@@ -888,7 +849,7 @@ export function CandidateDetailSidebar({
                               variant="outline"
                               size="sm"
                               onClick={handleDownloadResume}
-                              className="gap-2 bg-slate-700/50 border-slate-600/50 hover:bg-slate-700"
+                              className="gap-2 bg-muted/50 border-border hover:bg-muted"
                             >
                               <Download className="size-4" />
                               Download
@@ -897,13 +858,13 @@ export function CandidateDetailSidebar({
                         </div>
 
                         {embedUrl ? (
-                          <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-slate-700/50">
+                          <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
                             <iframe src={embedUrl} className="w-full h-full" allow="autoplay" title="Resume Preview" />
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-[400px] bg-slate-900/50 rounded-lg border border-slate-700/50">
-                            <FileText className="size-16 text-slate-600 mb-4" />
-                            <p className="text-slate-400 mb-4">Resume preview not available</p>
+                          <div className="flex flex-col items-center justify-center h-[400px] bg-muted/30 rounded-lg border border-border">
+                            <FileText className="size-16 text-muted-foreground opacity-20 mb-4" />
+                            <p className="text-muted-foreground mb-4">Resume preview not available</p>
                             {candidate.ResumeLink && (
                               <Button onClick={handleDownloadResume} className="gap-2">
                                 <ExternalLink className="size-4" />
@@ -929,8 +890,8 @@ export function CandidateDetailSidebar({
                         isOptimized={isOptimized}
                       />
                     ) : (
-                      <Card className="bg-slate-800/50 border-slate-700/50">
-                        <CardContent className="p-6 text-center py-8 text-slate-400">
+                      <Card className="bg-muted/30 border-border">
+                        <CardContent className="p-6 text-center py-8 text-muted-foreground">
                           <AlertCircle className="size-12 mx-auto mb-4 opacity-50" />
                           <p>Campaign information not available</p>
                         </CardContent>
@@ -940,7 +901,7 @@ export function CandidateDetailSidebar({
                 </Tabs>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4 shrink-0 bg-slate-950/80 backdrop-blur-xl px-6 pt-4 pb-6 border-t border-white/5 rounded-b-2xl">
+                <div className="flex gap-4 shrink-0 bg-background/80 backdrop-blur-xl px-6 pt-4 pb-6 border-t border-border rounded-b-2xl">
                   <Button
                     onClick={() => {
                       if (activeTab !== "decision") {
@@ -961,7 +922,7 @@ export function CandidateDetailSidebar({
                   <Button 
                     variant="outline" 
                     onClick={onClose} 
-                    className="flex-1 h-14 rounded-2xl text-white/60 hover:text-white bg-white/5 border-white/10 hover:bg-white/10 transition-all font-bold"
+                    className="flex-1 h-14 rounded-2xl text-muted-foreground hover:text-foreground bg-muted border-border hover:bg-muted/80 transition-all font-bold"
                   >
                     Close
                   </Button>
