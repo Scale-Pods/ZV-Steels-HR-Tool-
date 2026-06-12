@@ -215,6 +215,15 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
       }
 
 
+      if (file.name.toLowerCase().endsWith(".docx")) {
+        toast({
+          title: "File Type Not Supported",
+          description: `DOCX files are not allowed. Please use PDF or image formats for resumes.`,
+          variant: "destructive",
+        })
+        continue
+      }
+
       if (file.size > maxSize) {
         toast({
           title: "File Too Large",
@@ -825,7 +834,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                    accept=".pdf,.doc,.png,.jpg,.jpeg,.webp"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     disabled={isUploading}
