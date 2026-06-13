@@ -340,11 +340,17 @@ export function CandidateDetailSidebar({
     const seen = new Set<string>()
 
     const addPair = (label: string, value: string) => {
-      const key = label.toLowerCase().replace(/[^a-z0-9]/g, "")
+      const cleanLabel = label.trim()
+      const key = cleanLabel.toLowerCase().replace(/[^a-z0-9]/g, "")
       if (!key || seen.has(key)) return
+      
+      // Blocklist resume-specific sections from appearing in Call Logs
+      const isResumeSection = /^(key skills|experience|education|summary|resume summary|technical skills|projects|certifications|achievements|total experience|current salary|expected salary|notice period)$/i.test(cleanLabel)
+      if (isResumeSection) return
+
       if (SIDEBAR_EMPTY.has(value.toLowerCase().trim())) return
       seen.add(key)
-      pairs.push({ label, value })
+      pairs.push({ label: cleanLabel, value })
     }
 
     // Try JSON array format: [{question, answer}]
@@ -423,6 +429,10 @@ export function CandidateDetailSidebar({
     
     return parseCallLogs(bestText)
   }, [candidate])
+
+  const hasCallData = useMemo(() => {
+    return (callMetrics && callMetrics.length > 0) || (candidate?.Data && String(candidate.Data).trim().length > 0)
+  }, [callMetrics, candidate])
 
   return (
     <AnimatePresence>
@@ -718,7 +728,6 @@ export function CandidateDetailSidebar({
                     )}
                   </TabsContent>
                     <TabsContent value="call-logs" className="space-y-4 mt-4">
-                      {/* Call Recording — only rendered if URL present */}
                       {(() => {
                         const recordingUrl =
                           candidate["Call Recording"] ||
@@ -726,125 +735,147 @@ export function CandidateDetailSidebar({
                           candidate.call_recording ||
                           candidate.Recording ||
                           candidate.recording
-                        if (!recordingUrl) return null
-                        return (
-                          <Card className="bg-muted/50 border-border">
-                            <CardContent className="p-5 space-y-3">
-                              <div className="flex items-center gap-2">
-                                <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                                  <PhoneCall className="size-4 text-primary" />
-                                </div>
-                                <span className="font-bold text-foreground text-sm">Call Recording</span>
+                        
+                        // If everything is empty, show big empty state
+                        if (!recordingUrl && !hasCallData) {
+                          return (
+                            <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-muted/20 rounded-3xl border border-dashed border-border/50">
+                              <div className="size-16 rounded-2xl bg-muted flex items-center justify-center shadow-inner">
+                                <PhoneCall className="size-8 text-muted-foreground/30" />
                               </div>
-                              <audio
-                                controls
-                                src={recordingUrl}
-                                className="w-full h-10 [&::-webkit-media-controls-panel]:bg-muted [&::-webkit-media-controls-panel]:rounded-xl"
-                              />
-                            </CardContent>
-                          </Card>
-                        )
-                      })()}
-
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 px-1">
-                          {showRawData ? "Raw Screening Dataset" : "AI Call Intelligence"}
-                        </p>
-                        <div className="flex p-0.5 bg-muted/80 rounded-xl border border-border shadow-inner">
-                          <button
-                            onClick={() => setShowRawData(false)}
-                            className={cn(
-                              "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
-                              !showRawData 
-                                ? "bg-background text-primary shadow-sm scale-110" 
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            AI
-                          </button>
-                          <button
-                            onClick={() => setShowRawData(true)}
-                            className={cn(
-                              "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
-                              showRawData 
-                                ? "bg-background text-amber-500 shadow-sm scale-110" 
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            Raw
-                          </button>
-                        </div>
-                      </div>
-
-                      {showRawData ? (
-                        <div className="space-y-4">
-                          <Card className="bg-muted/20 border-border shadow-inner">
-                            <CardContent className="p-6">
-                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed selection:bg-primary/20">
-                                {candidate.Data || "No raw screening data available for this candidate."}
-                              </pre>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Call Log Q&A pairs — strictly from Data / Call Logs columns */}
-                          {callMetrics.length > 0 ? (
-                            <div className="space-y-2">
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 px-1 pb-1">
-                                AI Analysis
-                              </p>
-                              {callMetrics.map(({ label, value }, idx) => {
-                                const vLower = value.toLowerCase().trim()
-                                const isYes = vLower === "yes" || vLower.startsWith("yes,") || vLower.startsWith("yes ")
-                                const isNo  = vLower === "no"  || vLower.startsWith("no,")  || vLower.startsWith("no ")
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="group flex items-start gap-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4"
-                                  >
-                                    {/* Index badge */}
-                                    <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                                      <span className="text-[9px] font-black text-muted-foreground">{idx + 1}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0 space-y-1">
-                                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                                        {label}
-                                      </p>
-                                      {isYes ? (
-                                        <div className="flex items-center gap-2">
-                                          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                                          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{value}</span>
-                                        </div>
-                                      ) : isNo ? (
-                                        <div className="flex items-center gap-2">
-                                          <div className="size-2 rounded-full bg-red-400" />
-                                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{value}</span>
-                                        </div>
-                                      ) : (
-                                        <p className="text-sm text-foreground leading-relaxed">{value}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            /* No recording AND no call data — show empty state */
-                            !(candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording) && (
-                              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                                <div className="size-14 rounded-2xl bg-muted flex items-center justify-center">
-                                  <PhoneCall className="size-7 text-muted-foreground/40" />
-                                </div>
-                                <p className="text-muted-foreground/70 text-sm font-medium">No call data yet</p>
-                                <p className="text-muted-foreground/40 text-xs max-w-[220px] leading-relaxed">
-                                  Call logs and recordings will appear here once this candidate has been contacted.
+                              <div className="space-y-1 px-6">
+                                <p className="text-muted-foreground font-black uppercase tracking-widest text-[11px]">No Call Intelligence</p>
+                                <p className="text-muted-foreground/50 text-[10px] max-w-[240px] leading-relaxed mx-auto">
+                                  We haven't captured any screenings or call recordings for {candidate.Name || "this candidate"} yet.
                                 </p>
                               </div>
-                            )
-                          )}
-                        </>
-                      )}
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Call Recording — only rendered if URL present */}
+                            {recordingUrl && (
+                              <Card className="bg-muted/50 border-border">
+                                <CardContent className="p-5 space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                                      <PhoneCall className="size-4 text-primary" />
+                                    </div>
+                                    <span className="font-bold text-foreground text-sm">Call Recording</span>
+                                  </div>
+                                  <audio
+                                    controls
+                                    src={recordingUrl}
+                                    className="w-full h-10 [&::-webkit-media-controls-panel]:bg-muted [&::-webkit-media-controls-panel]:rounded-xl"
+                                  />
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* Only show AI/Raw toggle if there's text data to show */}
+                            {hasCallData && (
+                              <>
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 px-1">
+                                    {showRawData ? "Raw Screening Dataset" : "AI Call Intelligence"}
+                                  </p>
+                                  <div className="flex p-0.5 bg-muted/80 rounded-xl border border-border shadow-inner">
+                                    <button
+                                      onClick={() => setShowRawData(false)}
+                                      className={cn(
+                                        "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
+                                        !showRawData 
+                                          ? "bg-background text-primary shadow-sm scale-105" 
+                                          : "text-muted-foreground hover:text-foreground"
+                                      )}
+                                    >
+                                      AI
+                                    </button>
+                                    <button
+                                      onClick={() => setShowRawData(true)}
+                                      className={cn(
+                                        "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
+                                        showRawData 
+                                          ? "bg-background text-amber-500 shadow-sm scale-105" 
+                                          : "text-muted-foreground hover:text-foreground"
+                                      )}
+                                    >
+                                      Raw
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {showRawData ? (
+                                  <div className="space-y-4">
+                                    <Card className="bg-muted/20 border-border shadow-inner">
+                                      <CardContent className="p-6">
+                                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed selection:bg-primary/20">
+                                          {candidate.Data || "No raw screening data available."}
+                                        </pre>
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {callMetrics.length > 0 ? (
+                                      <>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 px-1 pb-1">
+                                          AI Analysis
+                                        </p>
+                                        {callMetrics.map(({ label, value }, idx) => {
+                                          const vLower = value.toLowerCase().trim()
+                                          const isYes = vLower === "yes" || vLower.startsWith("yes,") || vLower.startsWith("yes ")
+                                          const isNo  = vLower === "no"  || vLower.startsWith("no,")  || vLower.startsWith("no ")
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="group flex items-start gap-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4"
+                                            >
+                                              <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                                                <span className="text-[9px] font-black text-muted-foreground">{idx + 1}</span>
+                                              </div>
+                                              <div className="flex-1 min-w-0 space-y-1">
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                                                  {label}
+                                                </p>
+                                                {isYes ? (
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{value}</span>
+                                                  </div>
+                                                ) : isNo ? (
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="size-2 rounded-full bg-red-400" />
+                                                    <span className="text-sm font-semibold text-red-600 dark:text-red-400">{value}</span>
+                                                  </div>
+                                                ) : (
+                                                  <p className="text-sm text-foreground leading-relaxed">{value}</p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </>
+                                    ) : (
+                                      <div className="py-12 flex flex-col items-center justify-center text-center bg-muted/10 rounded-2xl border border-dashed border-border/50">
+                                        <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                                          <AlertCircle className="size-5 text-muted-foreground/30" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground/60 font-bold uppercase tracking-widest leading-none">No Call Highlights</p>
+                                        <p className="text-[10px] text-muted-foreground/40 mt-2 max-w-[200px] leading-relaxed">
+                                          The explicit Call Logs column is empty for this candidate. Use the <strong>RAW</strong> toggle above to review the full screening dataset.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </TabsContent>
 
 
