@@ -101,7 +101,7 @@ export default function ManageCampaignsPage() {
       
       <section className="space-y-8 border-t border-border/50 pt-10 pb-20">
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Platform Capabilities</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Platform Capabilities</h2>
           <p className="text-muted-foreground text-lg">Everything you need to scale your hiring process.</p>
         </div>
         

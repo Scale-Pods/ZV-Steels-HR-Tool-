@@ -138,6 +138,17 @@ export function CandidateDetailSidebar({
     return String(val)
   }
 
+  const formatCallTime = (callTime: string | undefined): { display: string; isDone: boolean } => {
+    if (!callTime) return { display: "", isDone: false }
+    const trimmed = callTime.trim()
+    const doneMatch = trimmed.match(/^done\s+/i)
+    if (doneMatch) {
+      const display = trimmed.slice(doneMatch[0].length).trim()
+      return { display, isDone: display.length > 0 }
+    }
+    return { display: trimmed, isDone: false }
+  }
+
   const pipelineProgress = useMemo(() => {
     if (!candidate) return null
 
@@ -623,28 +634,30 @@ export function CandidateDetailSidebar({
 
                 {/* Tabs — Premium segmented control */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-5 w-full bg-muted/60 border border-border p-1.5 rounded-2xl h-auto gap-1">
-                    {([
-                      { value: "profile",    label: "Profile",    icon: User },
-                      { value: "call-logs",  label: "Call Logs",  icon: PhoneCall },
-                      { value: "evaluation", label: "Evaluation", icon: Star },
-                      { value: "resume",     label: "Resume",     icon: FileText },
-                      { value: "decision",   label: "Decision",   icon: ClipboardList },
-                    ] as { value: string; label: string; icon: React.ElementType }[]).map(({ value, label, icon: Icon }) => (
-                      <TabsTrigger
-                        key={value}
-                        value={value}
-                        className={cn(
-                          "flex items-center justify-center gap-2 rounded-xl py-3 px-4 transition-all duration-200 border border-transparent",
-                          "text-muted-foreground hover:text-foreground hover:bg-background/20",
-                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:border-border"
-                        )}
-                      >
-                        <Icon className="size-5 shrink-0" />
-                        <span className="text-[11px] font-black uppercase tracking-widest leading-none">{label}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
+                    <TabsList className="grid grid-cols-5 w-full bg-muted/60 border border-border p-1 rounded-xl md:rounded-2xl h-auto gap-0.5 md:gap-1">
+                      {([
+                        { value: "profile",    label: "Profile",    icon: User },
+                        { value: "call-logs",  label: "Logs",  icon: PhoneCall },
+                        { value: "evaluation", label: "Eval", icon: Star },
+                        { value: "resume",     label: "Resume",     icon: FileText },
+                        { value: "decision",   label: "Action",   icon: ClipboardList },
+                      ] as { value: string; label: string; icon: React.ElementType }[]).map(({ value, label, icon: Icon }) => (
+                        <TabsTrigger
+                          key={value}
+                          value={value}
+                          className={cn(
+                            "flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 rounded-lg md:rounded-xl py-2 px-1 md:py-3 md:px-4 transition-all duration-200 border border-transparent",
+                            "text-muted-foreground hover:text-foreground hover:bg-background/20",
+                            "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:border-border"
+                          )}
+                        >
+                          <Icon className="size-4 md:size-5 shrink-0" />
+                          <span className="text-[8px] md:text-[11px] font-black uppercase tracking-normal md:tracking-widest leading-none text-center">
+                            {label}
+                          </span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
 
                   <TabsContent value="profile" className="space-y-4 mt-4">
                     <Card className="bg-card border-border shadow-sm">
@@ -678,7 +691,14 @@ export function CandidateDetailSidebar({
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Call Time</span>
-                            <span className="text-foreground font-bold text-sm">{candidate.Call_time || "—"}</span>
+                            {(() => {
+                              const fmt = formatCallTime(candidate.Call_time)
+                              return fmt.display ? (
+                                <span className={`font-bold text-sm ${fmt.isDone ? "text-emerald-400" : "text-foreground"}`}>{fmt.display}</span>
+                              ) : (
+                                <span className="text-foreground font-bold text-sm">—</span>
+                              )
+                            })()}
                           </div>
                         </div>
                       </CardContent>

@@ -512,7 +512,7 @@ export default function MeetingsPage() {
                </div>
                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black tracking-widest uppercase text-[10px]">Management Suite</Badge>
             </div>
-            <h1 className="text-5xl font-black tracking-tighter text-foreground lg:text-6xl">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter text-foreground">
               Interview <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-violet-500">Center</span>
             </h1>
             <p className="text-muted-foreground text-xl font-medium max-w-2xl">
@@ -577,7 +577,7 @@ export default function MeetingsPage() {
           <div className="grid gap-8 lg:grid-cols-12">
             {/* Calendar Control */}
             <Card className="lg:col-span-12 overflow-hidden bg-card border-border shadow-2xl rounded-4xl">
-               <div className="grid lg:grid-cols-12 min-h-[600px]">
+               <div className="grid lg:grid-cols-12 min-h-0 lg:min-h-[600px]">
                   {/* Left: Picker */}
                   <div className="lg:col-span-4 p-10 border-r border-border/50 bg-muted/20 flex flex-col items-center justify-center">
                     <div className="space-y-8 w-full max-w-[320px]">

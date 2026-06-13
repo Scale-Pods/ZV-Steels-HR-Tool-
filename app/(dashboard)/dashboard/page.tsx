@@ -515,13 +515,13 @@ export default function DashboardPage() {
 
   if (isNewUser) {
     return (
-      <div className="min-h-screen bg-background p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-8 mb-6">
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-4 md:p-6 lg:p-8 mb-6">
             <div className="absolute inset-0 bg-linear-to-r from-primary/5 to-accent/5" />
             <div className="relative">
-              <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-3">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground mb-3">
                 Welcome to ZV Steels HR Analytics
               </h1>
               <p className="text-muted-foreground text-lg font-medium">Empower your recruitment process with data-driven insights.</p>
@@ -790,7 +790,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background transition-colors duration-500">
       <div className="grid gap-6 p-6">
         {/* Header Section */}
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm p-8">
+        <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm p-4 md:p-6 lg:p-8">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-violet-500/5" />
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 w-full lg:w-auto">
@@ -1062,7 +1062,7 @@ export default function DashboardPage() {
                 </div>
               )}
               {stageDistributionData.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                   {stageDistributionData.map((entry, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="size-3 rounded-full shadow-sm" style={{ backgroundColor: entry.fill }} />
@@ -1194,18 +1194,18 @@ export default function DashboardPage() {
                   </CardTitle>
                   <CardDescription className="text-muted-foreground">Filter by recruitment stage</CardDescription>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input
                       placeholder="Search candidates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground w-[250px]"
+                      className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground w-full sm:w-[250px]"
                     />
                   </div>
                   <Select value={sortBy} onValueChange={(v) => setSortBy(v as "score" | "city" | "hr")}>
-                    <SelectTrigger className="w-[120px] bg-muted/50 border-border text-foreground">
+                    <SelectTrigger className="w-full sm:w-[120px] bg-muted/50 border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">

@@ -155,7 +155,7 @@ export default function LandingPage() {
                   <Users className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  <p className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                     10K+
                   </p>
                   <p className="text-sm text-muted-foreground font-medium">Candidates Tracked</p>
@@ -171,7 +171,7 @@ export default function LandingPage() {
                   <TrendingUp className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  <p className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                     85%
                   </p>
                   <p className="text-sm text-muted-foreground font-medium">Faster Hiring</p>
@@ -187,7 +187,7 @@ export default function LandingPage() {
                   <Building2 className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  <p className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                     500+
                   </p>
                   <p className="text-sm text-muted-foreground font-medium">Companies Trust Us</p>

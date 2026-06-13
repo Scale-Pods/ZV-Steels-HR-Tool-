@@ -560,7 +560,7 @@ export default function CallAnalysisPage() {
                 <Sparkles className="size-7 text-primary transition-transform duration-500 group-hover/icon:rotate-12 group-hover/icon:scale-110" />
               </div>
               <div>
-                <h1 className="text-4xl font-black text-foreground tracking-tight leading-none mb-1">Call Analysis <span className="text-primary italic">Hub</span></h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none mb-1">Call Analysis <span className="text-primary italic">Hub</span></h1>
                 <p className="text-muted-foreground/60 text-[11px] font-black uppercase tracking-[0.3em]">AI-Driven Candidate Intelligence</p>
               </div>
             </div>
@@ -571,7 +571,7 @@ export default function CallAnalysisPage() {
               variant="outline" 
               onClick={() => fetchData(selectedCampaign)} 
               disabled={loading} 
-              className="rounded-2xl border-white/10 text-foreground h-14 px-8 bg-zinc-900/50 backdrop-blur-2xl hover:bg-zinc-900/80 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl active:scale-[0.98]"
+              className="rounded-2xl border-white/10 text-foreground h-14 px-4 md:px-8 bg-zinc-900/50 backdrop-blur-2xl hover:bg-zinc-900/80 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl active:scale-[0.98]"
             >
               <RefreshCcw className={cn("size-4 mr-3", loading && "animate-spin")} /> 
               {loading ? "Synchronizing..." : "Refresh Intelligence"}
@@ -638,7 +638,7 @@ export default function CallAnalysisPage() {
           <table className="w-full text-[10px] border-collapse">
             <thead>
               <tr className="bg-muted/30 border-b border-border/50">
-                <th className="sticky left-0 z-20 bg-background/80 backdrop-blur-xl px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] w-[180px] cursor-pointer border-r border-border/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]" onClick={() => toggleSort("name")}>
+                <th className="md:sticky md:left-0 z-20 bg-background/80 backdrop-blur-xl px-3 md:px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] w-[120px] md:w-[180px] cursor-pointer border-r border-border/50 md:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]" onClick={() => toggleSort("name")}>
                   <div className="flex items-center gap-2">Target Profile (v7-ULTIMATE-SELECTOR) <SortIcon field="name" sortField={sortField} sortDir={sortDir} /></div>
                 </th>
                 <th className="px-4 py-4 text-left font-black text-muted-foreground/60 uppercase tracking-[0.15em] text-[9px] w-[110px] border-r border-border/50 whitespace-nowrap">Status</th>
@@ -692,14 +692,14 @@ export default function CallAnalysisPage() {
                         setIsSidebarOpen(true)
                       }}
                     >
-                      <td className="sticky left-0 z-10 bg-background/95 backdrop-blur-xl px-4 py-3 border-r border-border/50 group-hover:bg-muted/50 transition-colors shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
-                        <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-black border border-primary/20 shadow-sm text-[11px]">
+                      <td className="md:sticky md:left-0 z-10 bg-background/95 backdrop-blur-xl px-3 md:px-4 py-3 border-r border-border/50 group-hover:bg-muted/50 transition-colors md:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="size-7 md:size-8 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-black border border-primary/20 shadow-sm text-[10px] md:text-[11px]">
                             {name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-foreground text-[11px] truncate leading-none mb-1">{name}</p>
-                            <p className="text-[9px] text-muted-foreground/70 truncate font-medium">{c.Email || ""}</p>
+                            <p className="font-bold text-foreground text-[10px] md:text-[11px] truncate leading-none mb-0.5 md:mb-1">{name}</p>
+                            <p className="hidden sm:block text-[9px] text-muted-foreground/70 truncate font-medium">{c.Email || ""}</p>
                           </div>
                         </div>
                       </td>

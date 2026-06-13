@@ -38,6 +38,32 @@ interface UploadResponse {
   timestamp: string
 }
 
+function JDViewer({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const shouldTruncate = text.length > 200
+
+  return (
+    <div className="space-y-2">
+      <div className={`relative ${!expanded && shouldTruncate ? "max-h-[7.5rem] overflow-hidden" : ""}`}>
+        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{text}</p>
+        {!expanded && shouldTruncate && (
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent" />
+        )}
+      </div>
+      {shouldTruncate && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="h-7 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadFile[]>([])
@@ -653,21 +679,25 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                 )}
               </div>
             </div>
-            <div className="relative">
-              <Textarea
-                id="jd-text"
-                placeholder="Paste the full job description here..."
-                value={jdText}
-                onChange={(e) => setJdText(e.target.value)}
-                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground min-h-[120px] focus:border-violet-500/50 transition-colors"
-                disabled={isUploading || isRefreshing || (!isEditingJd && hasExistingJd)}
-              />
-              {isRefreshing && (
-                <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] flex items-center justify-center rounded-md">
-                  <Loader2 className="size-6 animate-spin text-violet-500" />
-                </div>
-              )}
-            </div>
+            {isEditingJd ? (
+              <div className="relative">
+                <Textarea
+                  id="jd-text"
+                  placeholder="Paste the full job description here..."
+                  value={jdText}
+                  onChange={(e) => setJdText(e.target.value)}
+                  className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground min-h-[120px] focus:border-violet-500/50 transition-colors"
+                  disabled={isUploading || isRefreshing}
+                />
+                {isRefreshing && (
+                  <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] flex items-center justify-center rounded-md">
+                    <Loader2 className="size-6 animate-spin text-violet-500" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <JDViewer text={jdText} />
+            )}
           </div>
 
           {/* Evaluation Weights Section */}

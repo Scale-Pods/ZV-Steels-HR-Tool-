@@ -65,6 +65,7 @@ interface Candidate {
   RoleApplied: string
   PhoneNumber?: string
   ResumeSummary?: string
+  CreatedAt?: string
   Strengths?: string
   Gaps?: string
   FitAnalysis?: string
@@ -156,6 +157,22 @@ const EMPTY_VALUES = new Set([
 
 function isRealValue(v: string): boolean {
   return !EMPTY_VALUES.has(v.toLowerCase().trim())
+}
+
+function formatCallTime(callTime: string | undefined): { display: string; isDone: boolean } {
+  if (!callTime) return { display: "", isDone: false }
+  const trimmed = callTime.trim()
+  const doneMatch = trimmed.match(/^done\s+/i)
+  if (doneMatch) {
+    const display = trimmed.slice(doneMatch[0].length).trim()
+    return { display, isDone: display.length > 0 }
+  }
+  const trailingDone = trimmed.match(/\s*[-–—]\s*done\s*$/i)
+  if (trailingDone) {
+    const display = trimmed.slice(0, trailingDone.index).trim()
+    return { display, isDone: display.length > 0 }
+  }
+  return { display: trimmed, isDone: false }
 }
 
 function parseCallLogsForTable(raw: any): Record<string, { value: string; label: string }> {
@@ -259,7 +276,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [sortBy, setSortBy] = useState<"score" | "city" | "hr">("score")
+  const [sortBy, setSortBy] = useState<"score" | "city" | "hr" | "created_at">("score")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewingMediaFor, setViewingMediaFor] = useState<{name: string, data: string, logs: string} | null>(null)
   const [mediaTab, setMediaTab] = useState<'script' | 'intelligence'>('script')
@@ -498,6 +515,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
           ManagerMeetingLink: c["Manager Interview Link"] || c.ManagerMeetingLink || "",
           ManagerEventID:     c["Manager Event ID"] || c.ManagerEventID || "",
           Call_time:          c["Call_time"] || c.Call_time || c["Call Time"] || c.call_time || "",
+          CreatedAt:          c["CreatedAt"] || c.created_at || c["created_at"] || c["CreationDate"] || c.CreationDate || "",
       }
       }
 
@@ -751,6 +769,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       const hrA = a.HR || ""
       const hrB = b.HR || ""
       return sortOrder === "desc" ? hrB.localeCompare(hrA) : hrA.localeCompare(hrB)
+    } else if (sortBy === "created_at") {
+      const dateA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0
+      const dateB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB
     }
     return 0
   })
@@ -1220,7 +1242,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                     className="pl-10 bg-muted/50 border-border text-foreground placeholder-muted-foreground w-full min-w-[200px] md:w-[280px]"
                   />
                 </div>
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as "score" | "city" | "hr")}>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as "score" | "city" | "hr" | "created_at")}>
                   <SelectTrigger className="w-[120px] bg-muted/50 border-border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
@@ -1228,6 +1250,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                     <SelectItem value="score">Sort by Score</SelectItem>
                     <SelectItem value="city">Sort by City</SelectItem>
                     <SelectItem value="hr">Sort by HR</SelectItem>
+                    <SelectItem value="created_at">Sort by Date</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
@@ -1265,29 +1288,28 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                 <div className="hidden md:block rounded-lg border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50 border-border">
-                        <TableHead className="text-muted-foreground font-semibold px-4 w-[200px]">Candidate</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold px-4 w-[180px]">Contact</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold px-4 w-[120px]">Media</TableHead>
-                        {dynamicMetricKeys.map((key) => (
-                          <TableHead key={key} className="text-muted-foreground font-semibold text-sm px-4 min-w-[200px]">
+                      <TableRow className="bg-muted/90 hover:bg-muted/90 border-border">
+                        <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] px-6 py-4 w-[240px] sticky left-0 bg-muted/90 backdrop-blur-sm z-30 border-r border-border/50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]">Candidate</TableHead>
+                        <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] px-6 py-4 w-[200px]">Contact Info</TableHead>
+                        {false && dynamicMetricKeys.map((key) => (
+                          <TableHead key={key} className="text-muted-foreground font-semibold text-xs px-4 min-w-[150px] max-w-[250px] whitespace-normal">
                             {columnLabels[key]}
                           </TableHead>
                         ))}
-                        <TableHead className="text-muted-foreground font-semibold text-center px-2 w-[80px]">Score</TableHead>
-                        <TableHead className="text-muted-foreground font-semibold text-center px-4 w-[100px]">Call Time</TableHead>
+                        <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-4 w-[80px] sticky right-[320px] bg-muted/90 backdrop-blur-sm z-30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Score</TableHead>
+                        <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-6 w-[100px] sticky right-[220px] bg-muted/90 backdrop-blur-sm z-30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Call Time</TableHead>
                         {!isOptimized && (
-                          <TableHead className="text-emerald-500 font-semibold text-center px-1 w-[80px]">Resume</TableHead>
+                          <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-2 w-[75px] sticky right-[145px] bg-muted/90 backdrop-blur-sm z-30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Resume</TableHead>
                         )}
-                        <TableHead className="text-blue-500 font-semibold text-center px-1 w-[80px]">Call</TableHead>
+                        <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-2 w-[75px] sticky right-0 bg-muted/90 backdrop-blur-sm z-30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] border-l border-border/50">Call</TableHead>
                         {(analytics?.numberOfRounds ?? 3) >= 1 && (
-                          <TableHead className="text-blue-600 dark:text-blue-400 font-semibold text-center px-1 w-[80px]">Round 1</TableHead>
+                          <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-4 w-[95px]">Round 1</TableHead>
                         )}
                         {(analytics?.numberOfRounds ?? 3) >= 2 && (
-                          <TableHead className="text-amber-600 dark:text-amber-400 font-semibold text-center px-1 w-[80px]">Round 2</TableHead>
+                          <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-4 w-[95px]">Round 2</TableHead>
                         )}
                         {(analytics?.numberOfRounds ?? 3) >= 3 && (
-                          <TableHead className="text-emerald-600 dark:text-emerald-400 font-semibold text-center px-1 w-[80px]">Round 3</TableHead>
+                          <TableHead className="text-muted-foreground font-bold uppercase tracking-wider text-[10px] text-center px-4 w-[95px]">Round 3</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
@@ -1299,67 +1321,54 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             : candidate.Email
                               ? candidate.Email.split("@")[0]
                               : "Unnamed Candidate"
+                        const callTimeFmt = formatCallTime(candidate.Call_time)
 
                         return (
                           <TableRow
                             key={candidate.CandidateID || index}
-                            className="border-border hover:bg-muted transition-colors cursor-pointer group"
+                            className="bg-card hover:bg-muted/50 transition-colors cursor-pointer group"
                             onClick={() => handleCandidateClick(candidate)}
                           >
-                            <TableCell className="font-medium px-4">
+                            <TableCell className="px-6 py-4 sticky left-0 bg-card z-20 border-r border-b border-border group-hover:bg-muted/95 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                                  {displayName.charAt(0).toUpperCase()}
+                                <div className="relative">
+                                  <div className="size-11 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-black shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                    {displayName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="absolute -bottom-0.5 -right-0.5 size-3 bg-background rounded-full border border-background flex items-center justify-center">
+                                    <div className="size-full rounded-full bg-emerald-500" />
+                                  </div>
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-foreground font-bold truncate group-hover:text-primary transition-colors">{displayName}</p>
-                                  <p className="text-xs text-slate-400 truncate">{candidate.City || "Location N/A"}</p>
+                                  <p className="text-sm font-bold text-foreground leading-tight group-hover:text-primary transition-colors">{displayName}</p>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <MapPin className="size-3 text-muted-foreground/70" />
+                                    <p className="text-[11px] text-muted-foreground font-medium truncate">{candidate.City || "Location N/A"}</p>
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="px-4">
-                              <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground truncate max-w-[170px]">{candidate.Email}</p>
+                            <TableCell className="px-6 py-4 border-b border-border group-hover:bg-muted/50 transition-colors">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <MessageSquare className="size-3 text-violet-500/70" />
+                                <p className="text-[11px] text-muted-foreground truncate max-w-[150px]">{candidate.Email}</p>
                                 {candidate.PhoneNumber && (
-                                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Phone className="size-3" />
                                     {candidate.PhoneNumber}
                                   </p>
                                 )}
+                                </div>
                               </div>
                             </TableCell>
-                            <TableCell className="px-4">
-                              <div className="flex flex-col gap-1.5">
-                                {candidate.CallRecording && (
-                                  <a 
-                                    href={candidate.CallRecording} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    onClick={e => e.stopPropagation()}
-                                    className="inline-flex w-fit items-center gap-1.5 text-[10px] bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 font-bold uppercase tracking-wider transition-colors"
-                                  >
-                                    <PhoneCall className="size-3" /> Audio
-                                  </a>
-                                )}
-                                {candidate.Data && (
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewingMediaFor({ name: displayName, data: candidate.Data!, logs: candidate.CallLogs || "" }); setMediaTab('script') }}
-                                    className="inline-flex w-fit items-center gap-1.5 text-[10px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 px-2 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider transition-colors"
-                                  >
-                                    <ExternalLink className="size-3" /> Script
-                                  </button>
-                                )}
-                                {(!candidate.CallRecording && !candidate.Data) && (
-                                  <span className="text-xs text-muted-foreground/40 italic">—</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            {dynamicMetricKeys.map((key) => {
+                            {/* Media and Intelligence cells removed */}
+                            {false && dynamicMetricKeys.map((key) => {
                               const entry = candidateMetrics.get(candidate.CandidateID)?.[key]
                               return (
-                                <TableCell key={key} className="px-4 py-3 min-w-[200px]">
+                                <TableCell key={key} className="px-4 py-3 min-w-[150px] max-w-[250px] whitespace-normal border-b border-border/60">
                                   {entry ? (
-                                    <p className="text-foreground text-base leading-snug line-clamp-3" title={entry.value}>
+                                    <p className="text-foreground text-xs leading-relaxed line-clamp-3" title={entry.value}>
                                       {entry.value}
                                     </p>
                                   ) : (
@@ -1368,16 +1377,18 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 </TableCell>
                               )
                             })}
-                            <TableCell className="text-center px-2">
-                              <span className="text-xl font-bold bg-linear-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                            <TableCell className="text-center px-4 sticky right-[320px] bg-card z-20 border-b border-border group-hover:bg-muted/95 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors">
+                              <span className="text-xl font-bold text-foreground">
                                 {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                               </span>
                             </TableCell>
-                            <TableCell className="text-center px-4 text-xs font-medium text-muted-foreground">
-                              {candidate.Call_time || "—"}
-                            </TableCell>
+                            <TableCell className="text-center px-6 sticky right-[220px] bg-card z-20 border-b border-border group-hover:bg-muted/95 transition-colors">
+  {callTimeFmt.display ? (
+    <span className={callTimeFmt.isDone ? "text-emerald-400 font-semibold" : "text-muted-foreground"}>{callTimeFmt.display}</span>
+  ) : "—"}
+</TableCell>
                             {!isOptimized && (
-                              <TableCell className="text-center px-1">
+                              <TableCell className="text-center px-1 sticky right-[160px] bg-card z-20 border-b border-border group-hover:bg-muted/95 transition-colors">
                                 <DecisionBadge 
                                   candidate={candidate} 
                                   roundKey="ResumeScreening" 
@@ -1386,7 +1397,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                                 />
                               </TableCell>
                             )}
-                            <TableCell className="text-center px-1">
+                            <TableCell className="text-center px-1 sticky right-0 bg-card z-20 border-b border-border group-hover:bg-muted/95 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] border-l transition-colors">
                               <DecisionBadge 
                                 candidate={candidate} 
                                 roundKey="CallRound" 
@@ -1395,7 +1406,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               />
                             </TableCell>
                             {(analytics?.numberOfRounds ?? 3) >= 1 && (
-                              <TableCell className="text-center px-1">
+                              <TableCell className="text-center px-4 border-b border-border group-hover:bg-muted/50 transition-colors">
                                 <DecisionBadge 
                                   candidate={candidate} 
                                   roundKey="HRRound" 
@@ -1405,7 +1416,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               </TableCell>
                             )}
                             {(analytics?.numberOfRounds ?? 3) >= 2 && (
-                              <TableCell className="text-center px-1">
+                              <TableCell className="text-center px-4 border-b border-border group-hover:bg-muted/50 transition-colors">
                                 <DecisionBadge 
                                   candidate={candidate} 
                                   roundKey="TechInterviewRound" 
@@ -1415,7 +1426,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                               </TableCell>
                             )}
                             {(analytics?.numberOfRounds ?? 3) >= 3 && (
-                              <TableCell className="text-center px-1">
+                              <TableCell className="text-center px-4 border-b border-border group-hover:bg-muted/50 transition-colors">
                                 <DecisionBadge 
                                   candidate={candidate} 
                                   roundKey="ManagerInterview" 
@@ -1440,6 +1451,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         : candidate.Email
                           ? candidate.Email.split("@")[0]
                           : "Unnamed Candidate"
+                    const callTimeFmt = formatCallTime(candidate.Call_time)
                     
                     return (
                       <div
@@ -1454,21 +1466,21 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                             </div>
                             <div className="min-w-0">
                               <p className="font-bold text-foreground truncate">{displayName}</p>
-                              <p className="text-xs text-slate-400 truncate">{candidate.City || "Location N/A"}</p>
+                              <p className="text-xs text-muted-foreground truncate">{candidate.City || "Location N/A"}</p>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                            <p className="text-lg font-bold text-foreground">
                               {typeof candidate.Score === "number" ? candidate.Score.toFixed(0) : candidate.Score}
                             </p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Score</p>
                           </div>
                         </div>
 
-                        {candidate.Call_time && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
-                            <Clock className="size-3.5" />
-                            <span>Call Time: <span className="font-semibold text-foreground">{candidate.Call_time}</span></span>
+                        {callTimeFmt.display && (
+                          <div className={`flex items-center gap-2 text-xs ${callTimeFmt.isDone ? "bg-emerald-500/10 text-emerald-400" : "text-muted-foreground bg-muted/50"} px-3 py-2 rounded-lg`}>
+                            <Clock className={`size-3.5 ${callTimeFmt.isDone ? "text-emerald-400" : ""}`} />
+                            <span>Call Time: <span className={`font-semibold ${callTimeFmt.isDone ? "text-emerald-400" : "text-foreground"}`}>{callTimeFmt.display}</span></span>
                           </div>
                         )}
 
@@ -1486,7 +1498,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
                         </div>
 
                         {/* Dynamic Questions (Mobile) */}
-                        {dynamicMetricKeys.filter(key => !!candidateMetrics.get(candidate.CandidateID)?.[key]).length > 0 && (
+                        {false && dynamicMetricKeys.filter(key => !!candidateMetrics.get(candidate.CandidateID)?.[key]).length > 0 && (
                           <div className="space-y-3 py-3 border-b border-border/50">
                             {dynamicMetricKeys.map((key) => {
                               const entry = candidateMetrics.get(candidate.CandidateID)?.[key]
