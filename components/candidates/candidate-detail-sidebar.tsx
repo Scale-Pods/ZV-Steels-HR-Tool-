@@ -21,12 +21,15 @@ import {
   MessageSquare,
   Star,
   ClipboardList,
+  Layers,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useRef } from "react"
@@ -108,6 +111,7 @@ export function CandidateDetailSidebar({
 }: CandidateDetailSidebarProps) {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("profile")
+  const [showRawData, setShowRawData] = useState(false)
   const decisionRef = useRef<CandidateDecisionSidebarRef>(null)
 
 
@@ -742,60 +746,104 @@ export function CandidateDetailSidebar({
                         )
                       })()}
 
-                      {/* Call Log Q&A pairs — strictly from Data / Call Logs columns */}
-                      {callMetrics.length > 0 ? (
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 px-1 pb-1">
-                            Call Intelligence
-                          </p>
-                          {callMetrics.map(({ label, value }, idx) => {
-                            const vLower = value.toLowerCase().trim()
-                            const isYes = vLower === "yes" || vLower.startsWith("yes,") || vLower.startsWith("yes ")
-                            const isNo  = vLower === "no"  || vLower.startsWith("no,")  || vLower.startsWith("no ")
-                            return (
-                              <div
-                                key={idx}
-                                className="group flex items-start gap-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4"
-                              >
-                                {/* Index badge */}
-                                <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                                  <span className="text-[9px] font-black text-muted-foreground">{idx + 1}</span>
-                                </div>
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                                    {label}
-                                  </p>
-                                  {isYes ? (
-                                    <div className="flex items-center gap-2">
-                                      <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{value}</span>
-                                    </div>
-                                  ) : isNo ? (
-                                    <div className="flex items-center gap-2">
-                                      <div className="size-2 rounded-full bg-red-400" />
-                                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">{value}</span>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-foreground leading-relaxed">{value}</p>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 px-1">
+                          {showRawData ? "Raw Screening Dataset" : "AI Call Intelligence"}
+                        </p>
+                        <div className="flex p-0.5 bg-muted/80 rounded-xl border border-border shadow-inner">
+                          <button
+                            onClick={() => setShowRawData(false)}
+                            className={cn(
+                              "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
+                              !showRawData 
+                                ? "bg-background text-primary shadow-sm scale-110" 
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            AI
+                          </button>
+                          <button
+                            onClick={() => setShowRawData(true)}
+                            className={cn(
+                              "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 uppercase tracking-wider",
+                              showRawData 
+                                ? "bg-background text-amber-500 shadow-sm scale-110" 
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            Raw
+                          </button>
+                        </div>
+                      </div>
+
+                      {showRawData ? (
+                        <div className="space-y-4">
+                          <Card className="bg-muted/20 border-border shadow-inner">
+                            <CardContent className="p-6">
+                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed selection:bg-primary/20">
+                                {candidate.Data || "No raw screening data available for this candidate."}
+                              </pre>
+                            </CardContent>
+                          </Card>
                         </div>
                       ) : (
-                        /* No recording AND no call data — show empty state */
-                        !(candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording) && (
-                          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                            <div className="size-14 rounded-2xl bg-muted flex items-center justify-center">
-                              <PhoneCall className="size-7 text-muted-foreground/40" />
+                        <>
+                          {/* Call Log Q&A pairs — strictly from Data / Call Logs columns */}
+                          {callMetrics.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 px-1 pb-1">
+                                AI Analysis
+                              </p>
+                              {callMetrics.map(({ label, value }, idx) => {
+                                const vLower = value.toLowerCase().trim()
+                                const isYes = vLower === "yes" || vLower.startsWith("yes,") || vLower.startsWith("yes ")
+                                const isNo  = vLower === "no"  || vLower.startsWith("no,")  || vLower.startsWith("no ")
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="group flex items-start gap-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4"
+                                  >
+                                    {/* Index badge */}
+                                    <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                                      <span className="text-[9px] font-black text-muted-foreground">{idx + 1}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                                        {label}
+                                      </p>
+                                      {isYes ? (
+                                        <div className="flex items-center gap-2">
+                                          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                                          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{value}</span>
+                                        </div>
+                                      ) : isNo ? (
+                                        <div className="flex items-center gap-2">
+                                          <div className="size-2 rounded-full bg-red-400" />
+                                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{value}</span>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-foreground leading-relaxed">{value}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
-                            <p className="text-muted-foreground/70 text-sm font-medium">No call data yet</p>
-                            <p className="text-muted-foreground/40 text-xs max-w-[220px] leading-relaxed">
-                              Call logs and recordings will appear here once this candidate has been contacted.
-                            </p>
-                          </div>
-                        )
+                          ) : (
+                            /* No recording AND no call data — show empty state */
+                            !(candidate["Call Recording"] || candidate.CallRecording || candidate.call_recording || candidate.Recording || candidate.recording) && (
+                              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                                <div className="size-14 rounded-2xl bg-muted flex items-center justify-center">
+                                  <PhoneCall className="size-7 text-muted-foreground/40" />
+                                </div>
+                                <p className="text-muted-foreground/70 text-sm font-medium">No call data yet</p>
+                                <p className="text-muted-foreground/40 text-xs max-w-[220px] leading-relaxed">
+                                  Call logs and recordings will appear here once this candidate has been contacted.
+                                </p>
+                              </div>
+                            )
+                          )}
+                        </>
                       )}
                     </TabsContent>
 
