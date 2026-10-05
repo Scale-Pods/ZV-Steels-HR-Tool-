@@ -465,6 +465,10 @@ export default function CallAnalysisPage() {
         )
       })
       .sort((a, b) => {
+        const aHasData = Object.keys(a.metrics).length > 0 ? 1 : 0
+        const bHasData = Object.keys(b.metrics).length > 0 ? 1 : 0
+        if (aHasData !== bHasData) return bHasData - aHasData
+
         let va: any = "", vb: any = ""
         if (sortField === "name") { va = a.candidate.Name || a.candidate.name || ""; vb = b.candidate.Name || b.candidate.name || "" }
         if (sortField === "score") { va = Number(a.candidate.Score || a.candidate.score) || 0; vb = Number(b.candidate.Score || b.candidate.score) || 0 }
