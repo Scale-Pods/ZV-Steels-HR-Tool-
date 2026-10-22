@@ -16,6 +16,20 @@ function interviewerTypeMatches(interviewerType: string, type: InterviewType): b
   return value.includes("manager") || value.includes("manger")
 }
 
+const ROUND_CALENDAR_LINK: Record<InterviewType, string> = {
+  hr: "HR Calendar Link",
+  tech: "Tech Calendar Link",
+  manager: "Manager Calendar Link",
+}
+
+function bookingSlug(calendarLink: string): string {
+  const parts = String(calendarLink || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+  return parts.length ? parts[parts.length - 1] : ""
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const email = String(searchParams.get("email") || "").trim()
@@ -31,25 +45,41 @@ export async function GET(request: Request) {
     const assignments = getInterviewerAssignments(row)
 
     let interviewerEmail = type ? assignments[type] : ""
+    let interviewers: Awaited<ReturnType<typeof getInterviewers>> = []
+    let matched: (typeof interviewers)[number] | undefined
 
-    if (type && !interviewerEmail) {
-      const rawValue = getAssignmentValue(row, type)
-      if (rawValue) {
-        try {
-          const interviewers = await getInterviewers()
+    if (type) {
+      try {
+        interviewers = await getInterviewers()
+      } catch {
+        interviewers = []
+      }
+
+      if (!interviewerEmail) {
+        const rawValue = getAssignmentValue(row, type)
+        if (rawValue) {
           const lowered = rawValue.toLowerCase()
-          const match =
+          matched =
             interviewers.find(
               (i) => i.Name.toLowerCase() === lowered && interviewerTypeMatches(i.Interviewer, type),
             ) ||
             interviewers.find((i) => i.Name.toLowerCase() === lowered) ||
             interviewers.find((i) => i.Email.toLowerCase() === lowered)
-          if (match?.Email) interviewerEmail = match.Email
-        } catch {
-          interviewerEmail = ""
+          if (matched?.Email) interviewerEmail = matched.Email
         }
       }
+
+      if (!matched && interviewerEmail) {
+        matched = interviewers.find(
+          (i) => i.Email.toLowerCase() === interviewerEmail.toLowerCase(),
+        )
+      }
     }
+
+    const bookingLink = matched?.["Calendar Link"] || ""
+    const calendarLink = type
+      ? String(row[ROUND_CALENDAR_LINK[type]] || "") || bookingLink
+      : ""
 
     return Response.json({
       email,
@@ -57,6 +87,10 @@ export async function GET(request: Request) {
       tech: assignments.tech,
       manager: assignments.manager,
       interviewerEmail,
+      interviewerName: matched?.Name || "",
+      interviewerSlug: bookingSlug(bookingLink),
+      calendarLink,
+      bookingLink,
       assignment: type ? getAssignmentValue(row, type) : "",
     })
   } catch (error: any) {

@@ -16,8 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   INTERVIEW_TYPE_LABEL,
-  INTERVIEW_TYPE_ROUND,
-  INTERVIEW_TYPE_ROUND_LABEL,
+  buildReschedulePayload,
+  buildRescheduleQuery,
   getInterviewerAssignments,
   resolveInterviewerEmail,
   type InterviewType,
@@ -252,20 +252,39 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     })
   }
 
-  const fetchInterviewerEmail = async (
+  const fetchInterviewerMeta = async (
     candidateEmail: string,
     type: InterviewType,
-  ): Promise<string> => {
-    if (!candidateEmail) return ""
+  ): Promise<{
+    interviewerEmail: string
+    interviewerName: string
+    interviewerSlug: string
+    calendarLink: string
+    bookingLink: string
+  }> => {
+    const empty = {
+      interviewerEmail: "",
+      interviewerName: "",
+      interviewerSlug: "",
+      calendarLink: "",
+      bookingLink: "",
+    }
+    if (!candidateEmail) return empty
     try {
       const res = await fetch(
         `/api/interviewer?email=${encodeURIComponent(candidateEmail)}&type=${type}`,
       )
-      if (!res.ok) return ""
+      if (!res.ok) return empty
       const data = await res.json()
-      return data?.interviewerEmail || ""
+      return {
+        interviewerEmail: data?.interviewerEmail || "",
+        interviewerName: data?.interviewerName || "",
+        interviewerSlug: data?.interviewerSlug || "",
+        calendarLink: data?.calendarLink || "",
+        bookingLink: data?.bookingLink || "",
+      }
     } catch {
-      return ""
+      return empty
     }
   }
 
@@ -279,13 +298,11 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       const assignments = getInterviewerAssignments(
         candidateDetails as unknown as Record<string, any>,
       )
-      let resolvedEmail = assignments[meetingType] || interviewerEmail || ""
+      const meta = await fetchInterviewerMeta(candidateEmail, meetingType)
+      let resolvedEmail = assignments[meetingType] || interviewerEmail || meta.interviewerEmail || ""
 
-      if (!resolvedEmail) {
-        resolvedEmail = await fetchInterviewerEmail(candidateEmail, meetingType)
-        if (resolvedEmail) {
-          assignments[meetingType] = resolvedEmail
-        }
+      if (resolvedEmail) {
+        assignments[meetingType] = resolvedEmail
       }
 
       if (!resolvedEmail) {
@@ -296,58 +313,63 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
 
       setRescheduleDialog(prev => ({ ...prev, interviewerEmail: resolvedEmail }))
 
-      const params = new URLSearchParams({
+      const details = candidateDetails as unknown as Record<string, any>
+      const calendarLink =
+        meta.calendarLink ||
+        String(
+          details["HR Calendar Link"] ||
+            details["Tech Calendar Link"] ||
+            details["Manager Calendar Link"] ||
+            "",
+        )
+
+      const payload = buildReschedulePayload({
         meetingType,
-        interviewType: meetingType,
-        interviewerEmail: resolvedEmail,
-        eventId,
+        interviewer: {
+          email: resolvedEmail,
+          name: meta.interviewerName,
+          slug: meta.interviewerSlug,
+          calendarLink,
+          bookingLink: meta.bookingLink,
+        },
+        assignments,
         candidateEmail,
+        candidateDetails: details,
+        campaignName,
+        eventId,
+        meetingLink: String(
+          details["HR Meeting Link"] ||
+            details["Tech Meeting Link"] ||
+            details["Manager Interview Link"] ||
+            "",
+        ),
+        oldDate: String(
+          details["HR Meeting Date"] ||
+            details["Tech Meeting Date"] ||
+            details["Manager Meeting Date"] ||
+            "",
+        ),
+        oldTime: String(
+          details["HR Meeting Time"] ||
+            details["Tech Meeting Time"] ||
+            details["Manager Meeting Time"] ||
+            "",
+        ),
+        newDate: date,
+        newTime: time,
         userRole: "Admin",
       })
+
+      const params = new URLSearchParams(buildRescheduleQuery(payload))
       console.log("[Reschedule Sidebar] Submitting:", Object.fromEntries(params))
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
 
       const res = await fetch(`${WEBHOOK_BASE}/${RESCHEDULE_ID}?${params.toString()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          action: "Reschedule",
-          campaignName,
-          candidateEmail,
-          meetingType,
-          interviewType: meetingType,
-          newDate: date,
-          newTime: time,
-          eventId,
-          interviewerEmail: resolvedEmail,
-          hrAssigned: assignments.hr,
-          techInterviewer: assignments.tech,
-          managerAssigned: assignments.manager,
-          "HR Assigned": assignments.hr,
-          "Tech Interviewer": assignments.tech,
-          "Manager Assigned": assignments.manager,
-          meetingDetails: {
-            type: INTERVIEW_TYPE_ROUND_LABEL[meetingType],
-            meetingType,
-            interviewType: meetingType,
-            round: INTERVIEW_TYPE_ROUND[meetingType],
-            newDate: date,
-            newTime: time,
-            eventId,
-          },
-          candidateDetails: {
-            ...(candidateDetails as unknown as Record<string, any>),
-            "HR Assigned": assignments.hr,
-            "Tech Interviewer": assignments.tech,
-            "Manager Assigned": assignments.manager,
-            HR: assignments.hr,
-            TIAssigned: assignments.tech,
-            ManagerAssigned: assignments.manager,
-            interviewerEmail: resolvedEmail,
-          },
-        }),
+        body: JSON.stringify(payload),
       })
       clearTimeout(timeoutId)
       const text = await res.text()
@@ -379,7 +401,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
         if (isSuccess) {
           toast({ 
             title: "Meeting Rescheduled ✓", 
-            description: data.message || `${meetingType?.toUpperCase()} round successfully rescheduled. Confirmation email sent.`
+            description: data.message || `${INTERVIEW_TYPE_LABEL[meetingType]} round moved to ${date} ${time}. Interviewer: ${resolvedEmail}`
           })
           setRescheduleDialog(prev => ({ ...prev, isOpen: false }))
         } else {

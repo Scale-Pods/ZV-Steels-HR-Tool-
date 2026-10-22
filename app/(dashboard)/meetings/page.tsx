@@ -16,8 +16,10 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   INTERVIEW_TYPE_LABEL,
-  INTERVIEW_TYPE_ROUND,
+  buildReschedulePayload,
+  buildRescheduleQuery,
   getInterviewerAssignments,
+  pickCandidateDetails,
   type InterviewType,
 } from "@/lib/interviewer"
 
@@ -41,6 +43,10 @@ interface Candidate {
   city: string
   score: number
   role?: string
+  campaignName?: string
+  hrCalendarLink?: string
+  techCalendarLink?: string
+  managerCalendarLink?: string
   hrMeetingDate?: string
   hrMeetingTime?: string
   hrMeetingLink?: string
@@ -59,6 +65,7 @@ interface Candidate {
   hr?: string
   tiAssigned?: string
   managerAssigned?: string
+  raw?: Record<string, any>
 }
 
 interface Campaign {
@@ -97,20 +104,39 @@ export default function MeetingsPage() {
     setRescheduleData({ mtg, date: defaultDate, time: mtg.time || "", isOpen: true })
   }
 
-  const fetchInterviewerEmail = async (
+  const fetchInterviewerMeta = async (
     candidateEmail: string,
     type: InterviewType,
-  ): Promise<string> => {
-    if (!candidateEmail) return ""
+  ): Promise<{
+    interviewerEmail: string
+    interviewerName: string
+    interviewerSlug: string
+    calendarLink: string
+    bookingLink: string
+  }> => {
+    const empty = {
+      interviewerEmail: "",
+      interviewerName: "",
+      interviewerSlug: "",
+      calendarLink: "",
+      bookingLink: "",
+    }
+    if (!candidateEmail) return empty
     try {
       const res = await fetch(
         `/api/interviewer?email=${encodeURIComponent(candidateEmail)}&type=${type}`,
       )
-      if (!res.ok) return ""
+      if (!res.ok) return empty
       const data = await res.json()
-      return data?.interviewerEmail || ""
+      return {
+        interviewerEmail: data?.interviewerEmail || "",
+        interviewerName: data?.interviewerName || "",
+        interviewerSlug: data?.interviewerSlug || "",
+        calendarLink: data?.calendarLink || "",
+        bookingLink: data?.bookingLink || "",
+      }
     } catch {
-      return ""
+      return empty
     }
   }
 
@@ -122,13 +148,11 @@ export default function MeetingsPage() {
     setIsRescheduling(`${mtg.candidate.id}-${mtg.type}`)
     try {
       const assignments = getInterviewerAssignments(mtg.candidate as unknown as Record<string, any>)
-      let interviewerEmail = assignments[interviewType] || ""
+      const meta = await fetchInterviewerMeta(mtg.candidate.email, interviewType)
+      let interviewerEmail = assignments[interviewType] || meta.interviewerEmail || ""
 
-      if (!interviewerEmail) {
-        interviewerEmail = await fetchInterviewerEmail(mtg.candidate.email, interviewType)
-        if (interviewerEmail) {
-          assignments[interviewType] = interviewerEmail
-        }
+      if (interviewerEmail) {
+        assignments[interviewType] = interviewerEmail
       }
 
       if (!interviewerEmail) {
@@ -139,29 +163,39 @@ export default function MeetingsPage() {
 
       // Pick only relevant fields for candidateDetails
       const baseCandidate: any = {
+        ...pickCandidateDetails(mtg.candidate.raw),
         id: mtg.candidate.id,
         name: mtg.candidate.name,
         email: mtg.candidate.email,
         phone: mtg.candidate.phone,
         city: mtg.candidate.city,
         score: mtg.candidate.score,
+        role: mtg.candidate.role || "",
+        campaignName: mtg.candidate.campaignName || mtg.candidate.role || "",
       }
 
+      let calendarLink = meta.calendarLink || ""
       if (interviewType === "hr") {
         baseCandidate.hrMeetingDate = mtg.candidate.hrMeetingDate
         baseCandidate.hrMeetingTime = mtg.candidate.hrMeetingTime
         baseCandidate.hrMeetingLink = mtg.candidate.hrMeetingLink
         baseCandidate.hrEventID = mtg.candidate.hrEventID
+        baseCandidate.hrCalendarLink = mtg.candidate.hrCalendarLink || ""
+        calendarLink = mtg.candidate.hrCalendarLink || calendarLink
       } else if (interviewType === "tech") {
         baseCandidate.techMeetingDate = mtg.candidate.techMeetingDate
         baseCandidate.techMeetingTime = mtg.candidate.techMeetingTime
         baseCandidate.techMeetingLink = mtg.candidate.techMeetingLink
         baseCandidate.techEventID = mtg.candidate.techEventID
+        baseCandidate.techCalendarLink = mtg.candidate.techCalendarLink || ""
+        calendarLink = mtg.candidate.techCalendarLink || calendarLink
       } else if (interviewType === "manager") {
         baseCandidate.managerMeetingDate = mtg.candidate.managerMeetingDate
         baseCandidate.managerMeetingTime = mtg.candidate.managerMeetingTime
         baseCandidate.managerMeetingLink = mtg.candidate.managerMeetingLink
         baseCandidate.managerEventID = mtg.candidate.managerEventID
+        baseCandidate.managerCalendarLink = mtg.candidate.managerCalendarLink || ""
+        calendarLink = mtg.candidate.managerCalendarLink || calendarLink
       }
 
       baseCandidate["HR Assigned"] = assignments.hr
@@ -172,54 +206,41 @@ export default function MeetingsPage() {
       baseCandidate.ManagerAssigned = assignments.manager
       baseCandidate.interviewerEmail = interviewerEmail
 
-      const payload = {
-        action: "Reschedule",
+      const payload = buildReschedulePayload({
         meetingType: interviewType,
-        interviewType,
-        interviewerEmail,
-        hrAssigned: assignments.hr,
-        techInterviewer: assignments.tech,
-        managerAssigned: assignments.manager,
-        "HR Assigned": assignments.hr,
-        "Tech Interviewer": assignments.tech,
-        "Manager Assigned": assignments.manager,
-        meetingDetails: {
-          type: mtg.type,
-          meetingType: interviewType,
-          interviewType,
-          round: INTERVIEW_TYPE_ROUND[interviewType],
-          oldDate: mtg.date,
-          oldTime: mtg.time,
-          newDate: date,
-          newTime: time,
-          link: mtg.link,
-          eventId: mtg.eventId
+        interviewer: {
+          email: interviewerEmail,
+          name: meta.interviewerName,
+          slug: meta.interviewerSlug,
+          calendarLink,
+          bookingLink: meta.bookingLink,
         },
-        candidateDetails: baseCandidate
-      }
+        assignments,
+        candidateEmail: mtg.candidate.email,
+        candidateDetails: baseCandidate,
+        campaignName: mtg.candidate.campaignName || mtg.candidate.role || "",
+        eventId: mtg.eventId || "",
+        meetingLink: mtg.link || "",
+        oldDate: mtg.date || "",
+        oldTime: mtg.time || "",
+        newDate: date,
+        newTime: time,
+        userRole: "Admin",
+      })
 
       const WEBHOOK_BASE = `${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"}`
-      const queryType = interviewType
 
-      const userRole = mtg.candidate.role || "Admin"
-      const params = new URLSearchParams({
-        meetingType: queryType,
-        interviewType: queryType,
-        interviewerEmail: interviewerEmail,
-        eventId: mtg.eventId || "",
-        candidateEmail: mtg.candidate.email,
-        userRole: userRole
-      })
-      console.log("[Reschedule] Sending params:", { meetingType: queryType, interviewerEmail, candidateEmail: mtg.candidate.email })
+      const params = new URLSearchParams(buildRescheduleQuery(payload))
+      console.log("[Reschedule] Sending params:", Object.fromEntries(params))
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
 
       const res = await fetch(`${WEBHOOK_BASE}?${params.toString()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ ...payload, userRole })
+        body: JSON.stringify(payload),
       })
       clearTimeout(timeoutId)
 
@@ -252,7 +273,7 @@ export default function MeetingsPage() {
         if (isSuccess) {
           toast({ 
             title: "Meeting Rescheduled ✓", 
-            description: data.message || `${mtg.candidate.name}'s interview successfully rescheduled. Refreshing in 5s...` 
+            description: data.message || `${mtg.candidate.name}'s ${INTERVIEW_TYPE_LABEL[interviewType]} interview moved to ${date} ${time}. Interviewer: ${interviewerEmail}` 
           })
           setRescheduleData(prev => ({ ...prev, isOpen: false }))
           
@@ -303,6 +324,12 @@ export default function MeetingsPage() {
     city: String(c.city || c.City || ""),
     score: Number(c.score || c.Score || c.OverallScore || 0),
     role: String(c.RoleApplied || c.role || c.Role || c.CampaignName || ""),
+    campaignName: String(c.Role || c.CampaignName || c.RoleApplied || ""),
+
+    // Calendar links (used by the automation to move the interview)
+    hrCalendarLink: c["HR Calendar Link"] || c.HRCalendarLink || "",
+    techCalendarLink: c["Tech Calendar Link"] || c.TechCalendarLink || "",
+    managerCalendarLink: c["Manager Calendar Link"] || c.ManagerCalendarLink || "",
     
     // HR Round
     hrMeetingDate: c["HR Meeting Date"] || c.HRMeetingDate || c.hrMeetingDate || "",
@@ -329,6 +356,7 @@ export default function MeetingsPage() {
     hr: c["HR Assigned"] || c.HR || c.hr || "",
     tiAssigned: c["Tech Interviewer"] || c.TIAssigned || c.tiAssigned || "",
     managerAssigned: c["Manager Assigned"] || c.ManagerAssigned || c.managerAssigned || "",
+    raw: c,
   })
 
   const fetchCandidates = async (campaignName: string) => {
