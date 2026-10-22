@@ -228,10 +228,18 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
 
   const openReschedule = (meetingType: "hr" | "tech" | "manager", interviewerEmail: string, eventId: string) => {
     const today = new Date().toISOString().split("T")[0]
+    let resolvedEmail = interviewerEmail || ""
+    // Fallbacks from candidateDetails
+    if (!resolvedEmail && candidateDetails) {
+      if (meetingType === "hr") resolvedEmail = (candidateDetails as any)["HR Assigned"] || (candidateDetails as any)["HR"] || ""
+      else if (meetingType === "tech") resolvedEmail = (candidateDetails as any)["Tech Interviewer"] || (candidateDetails as any)["TIAssigned"] || ""
+      else if (meetingType === "manager") resolvedEmail = (candidateDetails as any)["Manager Assigned"] || (candidateDetails as any)["HR Assigned"] || ""
+    }
+    console.log("[Reschedule Sidebar] Opening with:", { meetingType, interviewerEmail: resolvedEmail, eventId })
     setRescheduleDialog({
       isOpen: true,
       meetingType,
-      interviewerEmail,
+      interviewerEmail: resolvedEmail,
       eventId,
       date: today,
       time: "",
@@ -246,13 +254,20 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     try {
       const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"
       const RESCHEDULE_ID = process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"
+      let resolvedEmail = interviewerEmail || ""
+      if (!resolvedEmail && candidateDetails) {
+        if (meetingType === "hr") resolvedEmail = (candidateDetails as any)["HR Assigned"] || (candidateDetails as any)["HR"] || ""
+        else if (meetingType === "tech") resolvedEmail = (candidateDetails as any)["Tech Interviewer"] || (candidateDetails as any)["TIAssigned"] || ""
+        else if (meetingType === "manager") resolvedEmail = (candidateDetails as any)["Manager Assigned"] || (candidateDetails as any)["HR Assigned"] || ""
+      }
       const params = new URLSearchParams({
         meetingType,
-        interviewerEmail,
+        interviewerEmail: resolvedEmail,
         eventId,
         candidateEmail,
         userRole: "Admin",
       })
+      console.log("[Reschedule Sidebar] Submitting:", Object.fromEntries(params))
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
 

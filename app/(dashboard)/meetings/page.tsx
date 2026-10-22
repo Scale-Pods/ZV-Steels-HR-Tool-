@@ -145,9 +145,20 @@ export default function MeetingsPage() {
       else if (type.includes("manager")) queryType = "manager"
 
       let interviewerEmail = ""
-      if (type.includes("hr")) interviewerEmail = mtg.candidate.hr || ""
-      else if (type.includes("tech")) interviewerEmail = mtg.candidate.tiAssigned || ""
-      else if (type.includes("manager")) interviewerEmail = mtg.candidate.managerAssigned || mtg.candidate.hr || ""
+      if (type.includes("hr")) {
+        interviewerEmail = mtg.candidate.hr || (mtg.candidate as any)["HR Assigned"] || (mtg.candidate as any)["HR"] || ""
+      } else if (type.includes("tech")) {
+        interviewerEmail = mtg.candidate.tiAssigned || (mtg.candidate as any)["Tech Interviewer"] || (mtg.candidate as any)["TIAssigned"] || ""
+      } else if (type.includes("manager")) {
+        interviewerEmail = mtg.candidate.managerAssigned || (mtg.candidate as any)["Manager Assigned"] || mtg.candidate.hr || (mtg.candidate as any)["HR Assigned"] || ""
+      }
+
+      // Fallback: try to get from base candidate if still empty
+      if (!interviewerEmail && (mtg.candidate as any).email) {
+        // try to pull from any possible field
+        const c: any = mtg.candidate
+        interviewerEmail = c.hr || c.tiAssigned || c.managerAssigned || c["HR Assigned"] || c["Tech Interviewer"] || c["Manager Assigned"] || ""
+      }
 
       const userRole = mtg.candidate.role || "Admin"
       const params = new URLSearchParams({
@@ -157,6 +168,7 @@ export default function MeetingsPage() {
         candidateEmail: mtg.candidate.email,
         userRole: userRole
       })
+      console.log("[Reschedule] Sending params:", { meetingType: queryType, interviewerEmail, candidateEmail: mtg.candidate.email })
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
