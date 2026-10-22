@@ -6,17 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { KeyRound, Workflow, User2, ArrowRight } from "lucide-react"
 import { SignOutButton } from "@/components/profile/sign-out-button"
+import { useAuth } from "@/context/auth-context"
 
 export const dynamic = "force-dynamic"
 
 export default function ProfilePage() {
-  // Mock user data (Clerk removed)
-  const user = {
-    id: "guest-user",
-    emailAddresses: [{ emailAddress: "guest@example.com" }],
-    firstName: "Guest",
-    lastName: "User",
-  }
+  const { user } = useAuth()
 
   const credentials: any[] = []
   const campaigns: any[] = []
@@ -37,18 +32,16 @@ export default function ProfilePage() {
         <CardContent className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
             <div className="text-sm text-muted-foreground">Email</div>
-            <div className="font-medium">{user.emailAddresses[0]?.emailAddress}</div>
+            <div className="font-medium">{user?.email || "—"}</div>
           </div>
           <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">User ID</div>
-            <div className="font-mono text-sm">{user.id}</div>
+            <div className="text-sm text-muted-foreground">Access Type</div>
+            <div className="font-medium capitalize">{user?.accessType || "—"}</div>
           </div>
-          {(user.firstName || user.lastName) && (
-            <div className="space-y-1">
-              <div className="text-sm text-muted-foreground">Name</div>
-              <div className="font-medium">{`${user.firstName || ""} ${user.lastName || ""}`.trim()}</div>
-            </div>
-          )}
+          <div className="space-y-1 md:col-span-2">
+            <div className="text-sm text-muted-foreground">Name</div>
+            <div className="font-medium">{user?.name || "—"}</div>
+          </div>
           <div className="space-y-1">
             <div className="text-sm text-muted-foreground">Connections</div>
             <div className="flex items-center gap-2">

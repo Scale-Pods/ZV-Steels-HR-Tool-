@@ -1,10 +1,11 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import type React from "react"
 
 import { useState, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Upload, File, X, CheckCircle2, AlertCircle, ExternalLink, Loader2, FolderOpen, RefreshCcw, Edit2, Settings2, Clock } from "lucide-react"
+import { Upload, File, X, CheckCircle2, AlertCircle, ExternalLink, FolderOpen, RefreshCcw, Edit2, Settings2, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -200,7 +201,6 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
     }
   }, [campaignName])
 
-
   useEffect(() => {
     fetchJD()
   }, [fetchJD])
@@ -239,7 +239,6 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
         })
         continue
       }
-
 
       if (file.name.toLowerCase().endsWith(".docx")) {
         toast({
@@ -312,8 +311,6 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
       } else if (hasFiles) {
         action = "Folder"
       }
-
-
 
       // Add JD text if provided
       if (hasJD) {
@@ -477,10 +474,10 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
 
         if (action === "Folder") {
           successTitle = "Resumes Uploaded"
-          successDesc = "Candidates are now processing. You will receive an email once the AI scoring and skills extraction is complete."
+          successDesc = "Candidates are now processing."
         } else if (action === "JDFolder") {
           successTitle = "JD & Resumes Uploaded"
-          successDesc = "Data uploaded. You will receive an email once the AI candidates scoring is complete."
+          successDesc = "Data uploaded."
         }
 
         toast({
@@ -691,7 +688,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                 />
                 {isRefreshing && (
                   <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] flex items-center justify-center rounded-md">
-                    <Loader2 className="size-6 animate-spin text-violet-500" />
+                    <InfinityLoop className="size-6 text-violet-500" />
                   </div>
                 )}
               </div>
@@ -788,7 +785,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
           >
             {isUploading ? (
               <>
-                <Loader2 className="size-4 animate-spin mr-2" />
+                <InfinityLoop className="size-4 mr-2" />
                 Saving...
               </>
             ) : (
@@ -922,7 +919,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                           <X className="size-4" />
                         </Button>
                       )}
-                      {uploadFile.status === "uploading" && <Loader2 className="size-5 animate-spin text-violet-400" />}
+                      {uploadFile.status === "uploading" && <InfinityLoop className="size-5 text-violet-400" />}
                       {uploadFile.status === "success" && <CheckCircle2 className="size-5 text-emerald-400" />}
                       {uploadFile.status === "error" && <AlertCircle className="size-5 text-red-400" />}
                     </div>
@@ -956,7 +953,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                 >
                   {isUploading ? (
                     <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
+                      <InfinityLoop className="size-4 mr-2" />
                       Uploading...
                     </>
                   ) : (
@@ -997,7 +994,7 @@ export function HRUploadZone({ campaignName }: HRUploadZoneProps) {
                     <div className="flex items-start gap-2 mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
                       <Clock className="size-4 mt-0.5 shrink-0" />
                       <p className="text-xs leading-relaxed">
-                        Resumes have been uploaded and are currently being processed. It will take some time to process skills and score the candidates. <strong>You will receive an email once everything is done.</strong>
+                        Resumes have been uploaded and are currently being processed. It will take some time to process skills and score the candidates.
                       </p>
                     </div>
                   )}

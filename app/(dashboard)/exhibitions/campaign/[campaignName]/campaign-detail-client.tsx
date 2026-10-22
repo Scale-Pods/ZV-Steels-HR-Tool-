@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 // Removed Clerk import
@@ -10,33 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  ArrowLeft,
-  RefreshCw,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  AlertCircle,
-  Building2,
-  Phone,
-  PhoneCall,
-  Check,
-  X,
-  MoreVertical,
-  ExternalLink,
-  Trash2,
-  Briefcase,
-  MapPin,
-  Target,
-  DollarSign,
-  MessageSquare,
-  FileText,
-} from "lucide-react"
+import { ArrowLeft, RefreshCw, Search, ChevronLeft, ChevronRight, Users, TrendingUp, CheckCircle2, Clock, AlertCircle, Building2, Phone, PhoneCall, Check, X, MoreVertical, ExternalLink, Trash2, Briefcase, MapPin, Target, DollarSign, MessageSquare, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -338,16 +313,28 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
         return
       }
 
-      // Use "Certain Campaign" — this is the webhook that returns candidate data
-      // for a specific campaign from: ab8d28de-afb7-416f-aaf1-454949b27c18
-      const response = await fetch("/api/webhook-proxy?action=Certain%20Campaign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          CampaignName: campaignName,
-          UserEmail: userEmail
-        })
-      })
+      // ─── Campaign metadata (hr_campaigns row): rounds + Optimized flag ───
+      let metaRounds = 0
+      let metaOptimized: unknown
+      try {
+        const metaRes = await fetch(`/api/hr-data?view=campaigns`)
+        if (metaRes.ok) {
+          const metaJson = await metaRes.json()
+          const list: any[] = Array.isArray(metaJson) ? metaJson : metaJson?.campaigns || []
+          const meta = list.find(
+            (c) => String(c?.CampaignName ?? "").trim().toLowerCase() === campaignName.trim().toLowerCase()
+          )
+          if (meta) {
+            metaRounds = Number(meta.NumberOfRounds) || 0
+            metaOptimized = meta.Optimized
+          }
+        }
+      } catch (metaErr) {
+        console.warn("[v0] Campaign metadata fetch failed:", metaErr)
+      }
+
+      // Candidate data comes from the HR Data table (Role = campaign name)
+      const response = await fetch(`/api/hr-data?campaign=${encodeURIComponent(campaignName)}`)
 
       if (!response.ok) {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
@@ -382,43 +369,16 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
       console.log("[v0] Raw webhook response:", JSON.stringify(rawData).substring(0, 500))
 
       // ─── Extract Campaign Metadata ───────────────────────────────────────
-      let campaignRounds = Number(rawData.NumberOfRounds || rawData.numberOfRounds || 3)
-      
-      // If metadata not in certain campaign response, try fetching from campaigns list
-      if (!rawData.NumberOfRounds && !rawData.numberOfRounds) {
-        try {
-          const campaignsRes = await fetch("/api/webhook-proxy?action=Campaigns", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ UserEmail: userEmail })
-          })
-          if (campaignsRes.ok) {
-            const campaignsData = await campaignsRes.json()
-            let campaignsList: any[] = []
-            if (Array.isArray(campaignsData)) campaignsList = campaignsData
-            else if (campaignsData.data) campaignsList = campaignsData.data.map((item: any) => item.json || item)
-            
-            const currentCampaign = campaignsList.find(c => 
-              String(c.CampaignName || "").toLowerCase() === campaignName.toLowerCase()
-            )
-            if (currentCampaign?.NumberOfRounds) {
-              campaignRounds = Number(currentCampaign.NumberOfRounds)
-            }
-            if (currentCampaign) {
-              setIsOptimized(String(currentCampaign.Optimized || "").toLowerCase() === "true")
-            }
-          }
-        } catch (err) {
-          console.warn("[v0] Could not fetch supplemental campaign metadata:", err)
-        }
-      } else {
-        setIsOptimized(String(rawData.Optimized || "").toLowerCase() === "true")
-      }
+      const campaignRounds = Number(metaRounds || rawData.NumberOfRounds || rawData.numberOfRounds || 3)
+
+      // Optimized=true → resume decision hidden, pipeline starts from Call + rounds 1/2/3
+      const optimizedFlag = metaOptimized !== undefined ? metaOptimized : rawData.Optimized
+      setIsOptimized(["true", "yes", "1", "y"].includes(String(optimizedFlag ?? "").trim().toLowerCase()))
 
       const normalizeDecision = (val: any): string => {
         if (!val) return ""
         const v = String(val).toLowerCase()
-        if (v === "yes" || v === "pass" || v === "passed" || v === "approved" || v === "hired") return "Yes"
+        if (v === "yes" || v === "pass" || v === "passed" || v === "approved" || v === "hired" || v === "shortlist" || v === "shortlisted") return "Yes"
         if (v === "no" || v === "fail" || v === "failed" || v === "rejected") return "No"
         return String(val)
       }
@@ -856,10 +816,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
     // ── 2. Save to backend in background ───────────────────────────────────
     try {
-      // For final round, send "Hire"/"Reject" instead of "Yes"/"No"
+      // For final round, send "Shortlist"/"Reject" instead of "Yes"/"No"
       const isFinalRound = roundKey === lastRoundKey
       const backendDecision = isFinalRound
-        ? decision === "Yes" ? "Hire" : decision === "No" ? "Reject" : decision
+        ? decision === "Yes" ? "Shortlist" : decision === "No" ? "Reject" : decision
         : decision
 
       // Only send the field that was actually changed — not all other existing decisions
@@ -916,10 +876,10 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
     readOnly?: boolean,
     isFinal?: boolean,
   }) => {
-    const isYes = value?.toLowerCase() === "yes" || value?.toLowerCase() === "pass" || value?.toLowerCase() === "approved" || value?.toLowerCase() === "hired" || value?.toLowerCase() === "passed"
+    const isYes = value?.toLowerCase() === "yes" || value?.toLowerCase() === "pass" || value?.toLowerCase() === "approved" || value?.toLowerCase() === "hired" || value?.toLowerCase() === "passed" || value?.toLowerCase() === "shortlist" || value?.toLowerCase() === "shortlisted"
     const isNo = value?.toLowerCase() === "no" || value?.toLowerCase() === "fail" || value?.toLowerCase() === "rejected" || value?.toLowerCase() === "failed"
     
-    const yesLabel = isFinal ? "Hire" : "Yes"
+    const yesLabel = isFinal ? "Shortlist" : "Yes"
     const noLabel = isFinal ? "Reject" : "No"
     const label = value ? (isYes ? yesLabel : isNo ? noLabel : value) : "Pending"
     
@@ -972,14 +932,9 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
   if (!isMounted || (loading && !analytics)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-[70vh]">
         <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="size-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="size-8 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin-reverse" />
-            </div>
-          </div>
+            <InfinityLoop className="size-16 text-emerald-500 mx-auto" />
           <p className="text-muted-foreground font-medium animate-pulse">Loading campaign intelligence...</p>
         </div>
       </div>
@@ -988,7 +943,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-background">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
         <AlertCircle className="size-12 text-muted-foreground" />
         <p className="text-lg text-muted-foreground">Please sign in to view campaign details</p>
         <Link href="/sign-in">
@@ -1022,7 +977,7 @@ export default function CampaignDetailClient({ campaignName }: CampaignDetailCli
   const avgScoreByCity = analytics?.avgScoreByCity || {}
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
+    <div className="min-h-full p-4 md:p-6">
       <div className="w-full max-w-[98%] mx-auto space-y-6">
         <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-4 md:p-8">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-violet-500/5" />

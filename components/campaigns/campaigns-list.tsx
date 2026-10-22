@@ -1,25 +1,17 @@
 "use client"
 
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
-import { Calendar, MapPin, Users, Edit2, Trash2, Loader2, AlertCircle, Eye } from "lucide-react"
+import { Calendar, MapPin, Users, Edit2, Trash2, AlertCircle, LayoutGrid, List } from "lucide-react";
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { EditCampaignModal } from "./edit-campaign-modal"
 import { DeleteCampaignDialog } from "./delete-campaign-dialog"
-import Link from "next/link"
 
 const FETCH_URL = "https://n8n.srv1010832.hstgr.cloud/webhook/ab8d28de-afb7-416f-aaf1-454949b27c18?action=Campaigns"
 
@@ -29,6 +21,7 @@ interface Campaign {
   CampaignStartDate: string
   CampaignEndDate: string
   IsActive: boolean
+  Status?: string
   Description?: string
   JobDescription?: string
   Location?: string
@@ -36,11 +29,12 @@ interface Campaign {
 }
 
 export interface CampaignsListRef {
-  refetch: () => void
+  refetch: (waitForCampaign?: string) => void
 }
 
 export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList(_props, ref) {
   const { user } = useAuth()
+  const router = useRouter()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -49,20 +43,44 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [deletingCampaign, setDeletingCampaign] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  const fetchCampaigns = async () => {
+  const openCampaign = (campaign: Campaign) => {
+    router.push(`/exhibitions/campaign/${encodeURIComponent(campaign.CampaignName)}`)
+  }
+
+  const getCampaignStatus = (campaign: Campaign): "open" | "close" => {
+    const raw = campaign.Status || (campaign.IsActive ? "open" : "close")
+    return String(raw).toLowerCase() === "open" ? "open" : "close"
+  }
+
+  const handleToggleStatus = async (campaign: Campaign) => {
+    const next = getCampaignStatus(campaign) === "open" ? "close" : "open"
+    setUpdatingStatus(campaign.CampaignName)
+    try {
+      const response = await fetch("/api/campaigns/status", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignName: campaign.CampaignName, status: next }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Failed to update campaign status")
+      toast.success(`Campaign ${next === "open" ? "opened" : "closed"} successfully`)
+      fetchCampaigns()
+    } catch (err: any) {
+      console.error("[CampaignsList] Status error:", err)
+      toast.error(err.message || "Failed to update campaign status")
+    } finally {
+      setUpdatingStatus(null)
+    }
+  }
+
+  const fetchCampaigns = async (): Promise<Campaign[]> => {
     setLoading(true)
     setError(null)
     try {
-      // Use local proxy to handle the webhook call while obeying the 'everything in body' rule
-      // and bypassing browser CORS restrictions.
-      const response = await fetch("/api/webhook-proxy?action=Campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          UserEmail: user?.email || "guest@example.com"
-        })
-      })
+      const response = await fetch("/api/hr-data?view=campaigns")
       if (!response.ok) throw new Error("Failed to fetch campaigns")
       
       const text = await response.text()
@@ -90,17 +108,32 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
       }
       
       setCampaigns(extracted)
+      return extracted
     } catch (err: any) {
       console.error("[CampaignsList] Error:", err)
       setError(err.message || "An unexpected error occurred")
       toast.error("Could not load campaigns")
+      return []
     } finally {
       setLoading(false)
     }
   }
 
+  const refetchCampaigns = async (waitForCampaign?: string) => {
+    let list = await fetchCampaigns()
+    if (!waitForCampaign?.trim()) return
+    const target = waitForCampaign.trim().toLowerCase()
+    const isPresent = (items: Campaign[]) =>
+      items.some((c) => String(c.CampaignName || "").trim().toLowerCase() === target)
+    // The creation webhook may write asynchronously — poll until it shows up
+    for (let attempt = 0; attempt < 4 && !isPresent(list); attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      list = await fetchCampaigns()
+    }
+  }
+
   useImperativeHandle(ref, () => ({
-    refetch: fetchCampaigns,
+    refetch: refetchCampaigns,
   }))
 
   useEffect(() => {
@@ -124,15 +157,17 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
         })
       })
       
-      if (!response.ok) throw new Error("Failed to delete campaign")
-      
-      toast.success("Campaign deleted successfully", {
-        action: {
-          label: "OK",
-          onClick: () => fetchCampaigns(),
-        },
-        duration: Infinity, // Keep it visible until they click OK as requested
-      })
+       if (!response.ok) throw new Error("Failed to delete campaign")
+       
+       toast.success("Campaign deleted successfully", {
+         action: {
+           label: "OK",
+           onClick: () => fetchCampaigns(),
+         },
+         duration: 4000, // Auto-dismiss with OK button that refetches
+       })
+       // Immediately refetch to remove from list
+       setTimeout(() => fetchCampaigns(), 500)
     } catch (err: any) {
       console.error("[CampaignsList] Delete error:", err)
       toast.error(err.message || "Failed to delete campaign")
@@ -214,29 +249,73 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
           <h2 className="text-2xl font-bold tracking-tight">Active Campaigns</h2>
           <p className="text-muted-foreground">Currently registered hiring campaigns</p>
         </div>
-        <Button onClick={fetchCampaigns} variant="secondary" size="sm" disabled={loading}>
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card/50 p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("rounded-full px-3", viewMode === "grid" && "bg-foreground/10")}
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="size-4 mr-1.5" />
+              Grid
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("rounded-full px-3", viewMode === "list" && "bg-foreground/10")}
+              onClick={() => setViewMode("list")}
+            >
+              <List className="size-4 mr-1.5" />
+              List
+            </Button>
+          </div>
+          <Button onClick={fetchCampaigns} variant="secondary" size="sm" disabled={loading}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
+      {viewMode === "grid" ? (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {campaigns.map((campaign, index) => (
-          <Card key={index} className="bg-card/50 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
+        {campaigns.map((campaign, index) => {
+          const isOpen = getCampaignStatus(campaign) === "open"
+          return (
+          <Card key={index} className="bg-card/50 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden cursor-pointer"
+            onClick={() => openCampaign(campaign)}>
             {/* Active Indicator Bar */}
             <div className={cn(
               "absolute top-0 left-0 w-full h-1",
-              campaign.IsActive ? "bg-emerald-500" : "bg-muted-foreground/30"
+              isOpen ? "bg-emerald-500" : "bg-muted-foreground/30 bg-amber-500/50"
             )} />
             
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <Badge variant={campaign.IsActive ? "default" : "secondary"} className={cn(
-                    "mb-2",
-                    campaign.IsActive ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : ""
-                  )}>
-                    {campaign.IsActive ? "Active" : "Paused"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "mb-2 h-auto rounded-full px-3 py-1 text-xs font-semibold transition-all duration-300",
+                        isOpen
+                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                      )}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleToggleStatus(campaign)
+                      }}
+                      disabled={updatingStatus === campaign.CampaignName}
+                    >
+                      {updatingStatus === campaign.CampaignName
+                        ? "Updating..."
+                        : isOpen
+                          ? "Open"
+                          : "Closed"}
+                    </Button>
+                  </div>
                   <CardTitle className="text-xl line-clamp-1 text-foreground">{campaign.CampaignName}</CardTitle>
                 </div>
                 <div className="flex items-center gap-1">
@@ -289,26 +368,99 @@ export const CampaignsList = forwardRef<CampaignsListRef>(function CampaignsList
                   <span className="line-clamp-1">{campaign.Location || "Remote"}</span>
                 </div>
                 
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Users className="mr-2 size-3.5 text-blue-500" />
-                  <span>{campaign.ExpectedAttendees || 0} Candidates Expected</span>
-                </div>
+<div className="flex items-center text-xs text-muted-foreground">
+                <Users className="mr-2 size-3.5 text-blue-500" />
+                <span>{campaign.ExpectedAttendees || 0} Candidates Expected</span>
               </div>
-              
-              <Link href={`/exhibitions/campaign/${encodeURIComponent(campaign.CampaignName)}`} className="block w-full">
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-2 group-hover:bg-violet-600 group-hover:text-white group-hover:border-violet-600 transition-all duration-300"
-                  size="sm"
-                >
-                  <Eye className="size-4 mr-2" />
-                  View Analytics & Candidates
-                </Button>
-              </Link>
+            </div>
             </CardContent>
           </Card>
-        ))}
+          )
+        })}
       </div>
+      ) : (
+        <div className="space-y-3">
+          {campaigns.map((campaign, index) => {
+            const isOpen = getCampaignStatus(campaign) === "open"
+            return (
+              <Card key={index} className="bg-card/50 border-border/50 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden cursor-pointer"
+                onClick={() => openCampaign(campaign)}>
+                <div className={cn("absolute top-0 left-0 w-full h-1", isOpen ? "bg-emerald-500" : "bg-amber-500/50")} />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-auto rounded-full px-3 py-1 text-xs font-semibold transition-all duration-300",
+                        isOpen
+                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                      )}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleToggleStatus(campaign)
+                      }}
+                      disabled={updatingStatus === campaign.CampaignName}
+                    >
+                      {updatingStatus === campaign.CampaignName ? "Updating..." : isOpen ? "Open" : "Closed"}
+                    </Button>
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-base font-semibold text-foreground line-clamp-1">{campaign.CampaignName}</h3>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {campaign.CampaignStartDate ? format(new Date(campaign.CampaignStartDate), "MMM d, yyyy") : "N/A"} - 
+                        {campaign.CampaignEndDate ? format(new Date(campaign.CampaignEndDate), "MMM d, yyyy") : "N/A"}
+                      </span>
+                    </div>
+                    {campaign.Description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">{campaign.Description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span className="flex items-center">
+                        <MapPin className="mr-1 size-3 text-emerald-500" />
+                        <span className="line-clamp-1">{campaign.Location || "Remote"}</span>
+                      </span>
+                      <span className="flex items-center">
+                        <Users className="mr-1 size-3 text-blue-500" />
+                        {campaign.ExpectedAttendees || 0} Candidates Expected
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full hover:bg-violet-500/10 hover:text-violet-500 h-8 w-8"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleEditClick(campaign)
+                      }}
+                    >
+                      <Edit2 className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setDeletingCampaign(campaign.CampaignName)
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       {editingCampaign && (
         <EditCampaignModal 

@@ -46,7 +46,7 @@ export default function RootLayout({
           <AuthProvider>
             <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
             <Toaster />
-            <SonnerToaster position="top-right" richColors closeButton />
+            <SonnerToaster position="top-center" richColors closeButton />
             <Analytics />
           </AuthProvider>
         </ThemeProvider>

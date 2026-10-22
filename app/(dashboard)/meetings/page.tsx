@@ -1,20 +1,12 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useEffect, useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Video, 
-  ChevronRight, 
-  Loader2,
-  Users,
-  Building2,
-  ExternalLink
-} from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Video, ChevronRight, Users, Building2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast"
 import { format, isSameDay, parse, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -293,13 +285,9 @@ export default function MeetingsPage() {
       if (campaignName === "all") {
         console.log("[Meetings] Mode: All Campaigns - Attempting global fetch...")
         
-        // 1. Try global HRAnalytics fetch
+        // 1. Try global fetch of all candidates from HR Data
         try {
-          const res = await fetch("/api/webhook-proxy?action=HRAnalytics", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: "guest@example.com", campaign: undefined }),
-          })
+          const res = await fetch("/api/hr-data")
           
           if (res.ok) {
             const rawData = await res.json()
@@ -331,14 +319,7 @@ export default function MeetingsPage() {
             const aggregateResponses = await Promise.all(
               campaignList.map(async (camp) => {
                 try {
-                  const res = await fetch("/api/webhook-proxy?action=Certain%20Campaign", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      CampaignName: camp.CampaignName,
-                      UserEmail: "guest@example.com"
-                    })
-                  })
+                  const res = await fetch(`/api/hr-data?campaign=${encodeURIComponent(camp.CampaignName)}`)
                   if (!res.ok) return []
                   const rawData = await res.json()
                   
@@ -372,14 +353,7 @@ export default function MeetingsPage() {
       } else {
         // Single campaign fetch
         console.log(`[Meetings] Mode: Single Campaign (${campaignName})`)
-        const response = await fetch("/api/webhook-proxy?action=Certain%20Campaign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            CampaignName: campaignName,
-            UserEmail: "guest@example.com"
-          })
-        })
+        const response = await fetch(`/api/hr-data?campaign=${encodeURIComponent(campaignName)}`)
         if (response.ok) {
           const rawData = await response.json()
           let extracted: any[] = []
@@ -564,7 +538,7 @@ export default function MeetingsPage() {
         <div className="flex flex-col items-center justify-center py-32 gap-6 bg-card/30 rounded-4xl border border-dashed border-border">
            <div className="relative">
               <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
-              <Loader2 className="size-16 animate-spin text-primary relative" />
+              <InfinityLoop className="size-16 text-primary relative" />
            </div>
            <div className="text-center space-y-2">
               <p className="text-xl font-black text-foreground uppercase tracking-widest">Retrieving Schedule</p>
@@ -684,7 +658,7 @@ export default function MeetingsPage() {
                                          title="Postpone / Prepone Meeting"
                                        >
                                          {isRescheduling === `${mtg.candidate.id}-${mtg.type}` ? (
-                                            <Loader2 className="size-4 animate-spin" />
+                                            <InfinityLoop className="size-4" />
                                          ) : (
                                             <Clock className="size-4" />
                                          )}
@@ -776,7 +750,7 @@ export default function MeetingsPage() {
                                     title="Postpone / Prepone Meeting"
                                  >
                                     {isRescheduling === `${mtg.candidate.id}-${mtg.type}` ? (
-                                       <Loader2 className="size-5 animate-spin" />
+                                       <InfinityLoop className="size-5" />
                                     ) : (
                                        <Clock className="size-5" />
                                     )}
@@ -804,7 +778,7 @@ export default function MeetingsPage() {
                   ))
                 ) : (
                   <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-muted/10 rounded-[2.5rem] border-2 border-dashed border-border/50">
-                    <Loader2 className="size-10 mb-4 animate-spin-slow opacity-10" />
+                    <InfinityLoop className="size-10 mb-4 opacity-10" />
                     <p className="text-sm font-black text-muted-foreground/30 uppercase tracking-[0.3em]">No Active Sessions Today</p>
                   </div>
                 )}
@@ -872,7 +846,7 @@ export default function MeetingsPage() {
               disabled={!rescheduleData.date || !rescheduleData.time || isRescheduling !== null}
               className="bg-primary hover:bg-primary/90 text-white"
             >
-              {isRescheduling !== null && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {isRescheduling !== null && <InfinityLoop className="mr-2 size-4" />}
               Confirm Reschedule
             </Button>
           </DialogFooter>

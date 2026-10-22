@@ -1,30 +1,8 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react"
-import {
-  User,
-  Mail,
-  FileSearch,
-  Phone,
-  PhoneCall,
-  MessageSquare,
-  Briefcase,
-  UserCog,
-  Loader2,
-  Save,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  RefreshCcw,
-  Info,
-  ExternalLink,
-  Send,
-  CheckCircle,
-  MessageCircle,
-  CalendarClock,
-} from "lucide-react"
+import { User, Mail, FileSearch, Phone, PhoneCall, MessageSquare, Briefcase, UserCog, Save, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, RefreshCcw, Info, ExternalLink, Send, CheckCircle, MessageCircle, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -146,7 +124,7 @@ function DecisionButtons({
   disabled: boolean
   isFinal?: boolean
 }) {
-  const yesLabel = isFinal ? "Hire" : "Yes"
+  const yesLabel = isFinal ? "Shortlist" : "Yes"
   const noLabel = isFinal ? "Reject" : "No"
   return (
     <div className="flex gap-2">
@@ -200,7 +178,7 @@ function StatusPill({ value, isFinal = false }: { value: string; isFinal?: boole
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400">
         <CheckCircle2 className="size-3" />
-        {isFinal ? "Hired" : "Approved"}
+        {isFinal ? "Shortlisted" : "Approved"}
       </span>
     )
   }
@@ -365,64 +343,44 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     "Manager Interview": "",
   })
 
-  // Fetch Call Round data from webhook
-  const fetchCallRoundData = useCallback(async (forcedAction?: string) => {
+  // Fetch Call Round data from the HR Data table
+  const fetchCallRoundData = useCallback(async () => {
     setIsLoadingCallData(true)
     try {
-      const action = forcedAction || "CallRoundData"
-      
-      const response = await fetch(`/api/webhook-proxy?action=${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          CampaignName: campaignName,
-          Email: candidateEmail,
-          UserEmail: "guest@example.com"
-        }),
-      })
+      const params = new URLSearchParams()
+      if (campaignName && campaignName !== "all") params.set("campaign", campaignName)
+      if (candidateEmail) params.set("email", candidateEmail)
+      const query = params.toString()
+
+      const response = await fetch(`/api/hr-data${query ? `?${query}` : ""}`)
 
       if (!response.ok) {
-        console.warn("[CallRound] Webhook returned status:", response.status)
+        console.warn("[CallRound] HR Data returned status:", response.status)
         return
       }
 
-      const text = await response.text()
-      if (!text || text.trim() === "") return
+      const data = await response.json()
+      console.log("[CallRound] HR Data response:", data)
 
-      try {
-        const data = JSON.parse(text)
-        console.log(`[CallRound] ${action} response:`, data)
+      let extracted: any = null
+      if (Array.isArray(data)) {
+        extracted = data[0] || null
+      } else if (data?.data && Array.isArray(data.data)) {
+        extracted = data.data[0] || null
+      } else if (data && typeof data === "object") {
+        extracted = data
+      }
 
-        let extracted: any = null
-        if (Array.isArray(data)) {
-          extracted = data[0]?.json || data[0] || null
-        } else if (data.data && Array.isArray(data.data)) {
-          // If we got the whole campaign list (action="Certain Campaign")
-          const list = data.data
-          const found = list.find((item: any) => {
-            const c = item.json || item
-            return c.Email?.toLowerCase() === candidateEmail.toLowerCase() || c.email?.toLowerCase() === candidateEmail.toLowerCase()
-          })
-          extracted = found ? (found.json || found) : null
-        } else {
-          extracted = data
-        }
-
-        // If this was just the trigger response, don't show it as the final data
-        if (extracted?.message === "Workflow was started") {
-          console.log("[CallRound] Trigger acknowledged, fetching results from campaign data...")
-          // If we haven't already tried Certain Campaign, do it now
-          if (action !== "Certain Campaign") {
-            await fetchCallRoundData("Certain Campaign")
-          }
-          return
-        }
-
-        if (extracted) {
-          setCallRoundData(extracted)
-        }
-      } catch {
-        console.warn("[CallRound] Could not parse response")
+      if (extracted) {
+        setCallRoundData({
+          ...extracted,
+          decision: extracted.decision ?? extracted["Call Decision"] ?? extracted["Call Round"] ?? "",
+          callDate: extracted.callDate ?? extracted["Call 1"] ?? "",
+          data: extracted.data ?? extracted["Data"] ?? "",
+          callRecording: extracted.callRecording ?? extracted["Call Recording"] ?? "",
+          calledBy: extracted.calledBy ?? extracted["Called By"] ?? "",
+          duration: extracted.duration ?? extracted.Duration ?? "",
+        })
       }
     } catch (err) {
       console.error("[CallRound] Fetch error:", err)
@@ -444,7 +402,7 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       "Tech Comments": candidateDetails?.["Tech Comments"] || "",
       "Manager Interview": candidateDetails?.ManagerInterview || candidateDetails?.["Manager Decision"] || candidateDetails?.FinalDecision || "",
     })
-    setExpandedRound(0)
+    setExpandedRound(isOptimized ? 1 : 0)
     
     // Fallback: Initial data comes from candidateDetails
     if (candidateDetails) {
@@ -567,12 +525,12 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
       // ONLY send the records that have actually been modified to prevent wiping other backend records
       const queryParams = new URLSearchParams({ action: "UpdateDecision" })
 
-      // Determine the final round to send "Hire"/"Reject" instead of "Yes"/"No"
+      // Determine the final round to send "Shortlist"/"Reject" instead of "Yes"/"No"
       const lastRoundField = numberOfRounds >= 3 ? "Manager Interview" : numberOfRounds === 2 ? "Tech Interview" : numberOfRounds === 1 ? "HR Round" : "Call Round"
 
       const toBackendValue = (roundField: string, value: string) => {
         if (roundField === lastRoundField) {
-          return value === "Yes" ? "Hire" : value === "No" ? "Reject" : value
+          return value === "Yes" ? "Shortlist" : value === "No" ? "Reject" : value
         }
         return value
       }
@@ -1121,7 +1079,7 @@ function StructuredValue({
                         <span className="text-sm font-semibold text-foreground">Call Round</span>
                         {isLoadingCallData ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/15 text-cyan-400">
-                            <Loader2 className="size-3 animate-spin" />
+                            <InfinityLoop className="size-3" />
                             Loading
                           </span>
                         ) : hasData ? (
@@ -1162,7 +1120,7 @@ function StructuredValue({
 
                       {isLoadingCallData ? (
                         <div className="flex items-center justify-center py-6 gap-2 text-slate-400 text-sm">
-                          <Loader2 className="size-4 animate-spin" />
+                          <InfinityLoop className="size-4" />
                           Fetching call data...
                         </div>
                        ) : callRoundData ? (
@@ -1696,7 +1654,7 @@ function StructuredValue({
             {/* Call Round */}
             <div className="space-y-1">
               <div className={cn("size-7 mx-auto rounded-full flex items-center justify-center", callRoundDecisionNormalized === "Yes" ? "bg-emerald-500/20" : callRoundDecisionNormalized === "No" ? "bg-red-500/20" : "bg-muted")}>
-                {callRoundDecisionNormalized === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : callRoundDecisionNormalized === "No" ? <XCircle className="size-3.5 text-red-500" /> : isLoadingCallData ? <Loader2 className="size-3.5 text-cyan-500 animate-spin" /> : <PhoneCall className="size-3.5 text-muted-foreground" />}
+                {callRoundDecisionNormalized === "Yes" ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : callRoundDecisionNormalized === "No" ? <XCircle className="size-3.5 text-red-500" /> : isLoadingCallData ? <InfinityLoop className="size-3.5 text-cyan-500" /> : <PhoneCall className="size-3.5 text-muted-foreground" />}
               </div>
               <p className="text-[9px] text-muted-foreground font-medium leading-tight">Call</p>
             </div>
@@ -1731,7 +1689,7 @@ function StructuredValue({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
+                <InfinityLoop className="size-4" />
                 Saving...
               </>
             ) : (
@@ -1812,7 +1770,7 @@ function StructuredValue({
               className="bg-blue-600 hover:bg-blue-700 gap-2"
             >
               {rescheduleDialog.isSubmitting ? (
-                <><Loader2 className="size-4 animate-spin" /> Sending...</>
+                <><InfinityLoop className="size-4" /> Sending...</>
               ) : (
                 <><CalendarClock className="size-4" /> Confirm Reschedule</>
               )}

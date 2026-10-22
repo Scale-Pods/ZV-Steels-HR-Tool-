@@ -56,8 +56,8 @@ export default function ManageCampaignsPage() {
             onClick={() => setShowCreateForm(!showCreateForm)}
             variant={showCreateForm ? "outline" : "default"}
             className={cn(
-              "w-full sm:w-auto gap-2 h-10 px-6 font-semibold transition-all active:scale-95 shadow-md",
-              !showCreateForm && "bg-violet-600 hover:bg-violet-700 text-white"
+              "w-full sm:w-auto gap-2 h-10 px-6 font-medium tracking-tight transition-all active:scale-95 rounded-xl shadow-sm",
+              !showCreateForm && "bg-primary text-primary-foreground hover:opacity-90"
             )}
           >
             {showCreateForm ? (
@@ -80,11 +80,11 @@ export default function ManageCampaignsPage() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: "auto", marginTop: 24 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              className="rounded-2xl overflow-hidden border border-violet-500/20 shadow-2xl shadow-violet-500/5"
+              className="rounded-[2rem] overflow-hidden border border-white/50 dark:border-white/10 shadow-xl shadow-black/5 dark:shadow-black/40"
             >
-              <CreateCampaignForm onSuccess={() => {
+              <CreateCampaignForm onSuccess={(campaignName) => {
                 setShowCreateForm(false)
-                campaignsListRef.current?.refetch()
+                campaignsListRef.current?.refetch(campaignName)
               }} />
             </motion.div>
           )}

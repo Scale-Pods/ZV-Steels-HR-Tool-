@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -11,12 +12,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns"
 import toast from "react-hot-toast"
 import { cn } from "@/lib/utils"
 // Removed Clerk import
-
 
 interface Campaign {
   CampaignName: string
@@ -43,7 +43,6 @@ interface EditCampaignModalProps {
 export function EditCampaignModal({ campaign, open, onOpenChange, onSuccess }: EditCampaignModalProps) {
   const [campaignName, setCampaignName] = useState<string>(campaign.CampaignName || "")
   const [userEmail] = useState("guest@example.com")
-
 
   // Initial values (for change tracking)
   const [initialValues, setInitialValues] = useState<Campaign>(campaign)
@@ -178,6 +177,7 @@ export function EditCampaignModal({ campaign, open, onOpenChange, onSuccess }: E
       const requestBody = {
         UserEmail: userEmail,
         CampaignName: campaignName,
+        Questions: updates.Questions || updates.CallQuestions,
         ...updates,
       }
 
@@ -439,7 +439,7 @@ export function EditCampaignModal({ campaign, open, onOpenChange, onSuccess }: E
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin mr-2" />
+                  <InfinityLoop className="size-4 mr-2" />
                   Saving Changes...
                 </>
               ) : (

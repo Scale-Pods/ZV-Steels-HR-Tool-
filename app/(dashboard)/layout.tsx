@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -15,15 +16,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarSeparator,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
-import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as CalendarIcon, PhoneCall } from "lucide-react"
-import { useState, useEffect, ReactNode } from "react"
-import { PageHeader } from "@/components/page-header"
+import { Home, Workflow, MessageCircle, Key, Sparkles, AlertCircle, Calendar as CalendarIcon, PhoneCall, Users } from "lucide-react"
+import { useState, useEffect, useRef, ReactNode } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { UserNav } from "@/components/profile/user-nav"
 import { cn } from "@/lib/utils"
 import { ReportIssueModal } from "@/components/campaigns/report-issue-modal"
 import { PageTransition } from "@/components/animations/page-transition"
@@ -32,6 +31,7 @@ import { useRouter } from "next/navigation"
 
 function NavItems() {
   const pathname = usePathname()
+  const { user } = useAuth()
   const items = [
     {
       href: "/dashboard",
@@ -57,11 +57,21 @@ function NavItems() {
       icon: <PhoneCall className="size-6" />,
       description: "Automated Call Results",
     },
+    ...(user?.accessType === "admin"
+      ? [
+          {
+            href: "/users",
+            label: "User Activity",
+            icon: <Users className="size-6" />,
+            description: "Admin · Access & Logs",
+          },
+        ]
+      : []),
   ]
 
   return (
     <>
-      <SidebarMenu className="gap-2.5 px-2 group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:items-center">
+      <SidebarMenu className="gap-2 px-2 group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:items-center">
         {items.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} className="w-full">
@@ -69,7 +79,7 @@ function NavItems() {
                 asChild
                 isActive={pathname === item.href}
                 className={cn(
-                  "w-full h-auto py-3.5 px-4 rounded-2xl transition-all duration-300 border border-transparent mb-1",
+                  "w-full h-auto py-3 px-4 rounded-2xl transition-all duration-300 border border-transparent mb-1",
                   "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:py-3 group-data-[state=collapsed]:w-10! group-data-[state=collapsed]:p-0!",
                   pathname === item.href
                     ? "bg-primary/10 border-primary/20 text-foreground shadow-xs"
@@ -111,10 +121,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Fade the scrollbar out when idle, show it only while scrolling
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onScroll = () => {
+      el.dataset.scrolling = "true"
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        el.dataset.scrolling = "false"
+      }, 700)
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      el.removeEventListener("scroll", onScroll)
+      if (timer) clearTimeout(timer)
+    }
+  }, [user])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -126,7 +156,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <InfinityLoop className="size-12 text-primary" />
           <p className="text-muted-foreground font-medium animate-pulse">Verifying Session...</p>
         </div>
       </div>
@@ -137,6 +167,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider
+      className="bg-[#e5e7eb] dark:bg-[#1e1e1e]"
       style={
         {
           "--sidebar-width": "19rem",
@@ -144,12 +175,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         } as React.CSSProperties
       }
     >
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar transition-colors duration-300">
-        <SidebarHeader className="py-8 px-4 group-data-[state=collapsed]:px-0 overflow-hidden items-center">
-          <Link href="/" className="flex flex-col items-center justify-center gap-4 hover:opacity-90 transition-opacity w-full">
+      <Sidebar collapsible="icon" variant="floating" className="transition-colors duration-300 left-3 top-3 bottom-3 p-3">
+        <SidebarHeader className="py-5 px-4 group-data-[state=collapsed]:px-0 overflow-hidden items-center">
+          <Link href="/" className="flex flex-col items-center justify-center gap-3 hover:opacity-90 transition-opacity w-full">
             {/* ZV Steels Logo - Centered & Bigger */}
             <div className="flex flex-col items-center gap-1.5 w-full">
-              <div className="relative h-20 w-40 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-8 transition-all">
+              <div className="relative h-14 w-28 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-8 transition-all">
                 <Image
                   src="https://zvsteels.com/assets/img/zv_logo.png"
                   alt="ZV Steels Logo"
@@ -178,9 +209,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         <SidebarSeparator className="bg-border/50" />
 
-        <SidebarContent className="py-4">
+        <SidebarContent className="py-3">
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 px-6 py-4 font-bold">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 px-6 py-2 font-bold">
               Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -189,7 +220,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-border/50 p-2 group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:items-center">
+        <SidebarFooter className="border-t border-border/50 p-3 gap-3 group-data-[state=collapsed]:px-2 group-data-[state=collapsed]:items-center">
+          <div className="flex w-full items-center justify-between gap-2 group-data-[state=collapsed]:flex-col-reverse group-data-[state=collapsed]:justify-center">
+            <UserNav />
+            <ThemeToggle />
+          </div>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -205,25 +240,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
-
-        <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-svh bg-background flex flex-col">
-        <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-          <div className="flex h-16 items-center gap-2 md:gap-4 px-4 md:px-8">
-            <SidebarTrigger className="hover:bg-accent shrink-0 p-2 size-10" />
-            <div className="flex-1 min-w-0">
-              <PageHeader />
+      <SidebarInset className="h-svh flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 p-6 overflow-hidden">
+          <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
+            <div ref={scrollRef} data-scrolling="false" className="scroll-sleek flex-1 min-h-0 overflow-auto p-3 md:p-5">
+              <PageTransition key={pathname}>
+                {children}
+              </PageTransition>
             </div>
           </div>
-        </header>
-
-        <main className="flex-1 p-4 md:p-4 overflow-auto">
-          <PageTransition key={pathname}>
-            {children}
-          </PageTransition>
-        </main>
+        </div>
         <ReportIssueModal open={isReportModalOpen} onOpenChange={setIsReportModalOpen} />
       </SidebarInset>
     </SidebarProvider>

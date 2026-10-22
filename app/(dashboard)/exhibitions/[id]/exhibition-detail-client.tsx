@@ -1,22 +1,13 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import {
-  ArrowLeft,
-  Share2,
-  Calendar,
-  MapPin,
-  Users,
-  MessageSquare,
-  ExternalLink,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react"
+import { ArrowLeft, Share2, Calendar, MapPin, Users, MessageSquare, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Mock exhibition data - replace with actual API call
@@ -82,7 +73,7 @@ export default function ExhibitionDetailClient() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
-          <Loader2 className="size-12 animate-spin text-muted-foreground mx-auto" />
+          <InfinityLoop className="size-12 text-muted-foreground mx-auto" />
           <p className="text-muted-foreground">Loading exhibition details...</p>
         </div>
       </div>
@@ -235,7 +226,7 @@ export default function ExhibitionDetailClient() {
               >
                 {sharing ? (
                   <>
-                    <Loader2 className="size-5 animate-spin" />
+                    <InfinityLoop className="size-5" />
                     Opening WhatsApp...
                   </>
                 ) : (

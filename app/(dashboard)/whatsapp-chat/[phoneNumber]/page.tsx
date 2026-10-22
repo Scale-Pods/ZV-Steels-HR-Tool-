@@ -1,11 +1,12 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ArrowLeft, Loader2, Phone, User, Bot } from "lucide-react"
+import { ArrowLeft, Phone, User, Bot } from "lucide-react";
 import Link from "next/link"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
@@ -159,7 +160,7 @@ export default function ChatDetailPage() {
           </Link>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <InfinityLoop className="h-8 w-8 text-muted-foreground" />
         </div>
       </div>
     )

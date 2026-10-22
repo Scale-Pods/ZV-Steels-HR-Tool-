@@ -1,9 +1,10 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Phone, Loader2 } from "lucide-react"
+import { Phone } from "lucide-react";
 import Link from "next/link"
 import toast from "react-hot-toast"
 
@@ -25,13 +26,7 @@ export default function WhatsAppChatPage() {
       setIsLoading(true)
       console.log("[v0] Fetching user list...")
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_CHAT_DATA || "get-chat-data"}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}), // Empty body to get user list
-      })
+      const response = await fetch("/api/hr-data?view=users")
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -107,7 +102,7 @@ export default function WhatsAppChatPage() {
           <p className="mt-1 text-sm text-muted-foreground">View and manage your WhatsApp conversations</p>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <InfinityLoop className="h-8 w-8 text-muted-foreground" />
         </div>
       </div>
     )

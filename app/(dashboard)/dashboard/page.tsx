@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,22 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from "next/navigation"
-import {
-  Users,
-  TrendingUp,
-  Award,
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  Loader2,
-  Target,
-  BarChart3,
-  Search,
-  ArrowUpRight,
-} from "lucide-react"
+import { Users, TrendingUp, Award, AlertCircle, Building2, CheckCircle2, Target, BarChart3, Search, ArrowUpRight, XCircle, Layers, CalendarClock, PhoneCall, Activity, Video, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 import { useAuth } from "@/context/auth-context"
+import { parse, isValid, format } from "date-fns"
+import Link from "next/link"
 import {
   ResponsiveContainer,
   Cell,
@@ -177,6 +167,11 @@ interface Candidate {
   managerMeetingTime?: string
   managerMeetingLink?: string
   managerEventID?: string
+
+  // Source row extras
+  campaign: string
+  callDate: string
+  callTranscript: string
 }
 
 const colors = {
@@ -192,11 +187,65 @@ const isYes = (val: any) =>
 const isNo = (val: any) => 
   val === false || (typeof val === "string" && ["no", "rejected", "fail", "failed"].includes(val.toLowerCase()));
 
+interface TeamUser {
+  id: number
+  Name: string | null
+  Email: string | null
+  Access_Type: string | null
+  Last_Activity: string | null
+}
+
+function parseFlexibleDate(dateStr: string): Date | null {
+  if (!dateStr || typeof dateStr !== "string") return null
+  const formats = ["d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "d-M-yyyy", "dd-MM-yyyy", "yyyy-MM-dd'T'HH:mm:ss"]
+  for (const fmt of formats) {
+    try {
+      const d = parse(dateStr.trim(), fmt, new Date())
+      if (isValid(d)) return d
+    } catch {}
+  }
+  const native = new Date(dateStr)
+  return isValid(native) ? native : null
+}
+
+function timeAgo(value: string | null): string {
+  if (!value) return "Never"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return "Just now"
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
+const capsuleCard =
+  "rounded-[2rem] border-white/60 dark:border-white/10 shadow-[0_16px_48px_-16px_rgba(15,23,42,0.22)] dark:shadow-[0_16px_48px_-16px_rgba(0,0,0,0.6)] transition-all duration-300"
+const glassRow =
+  "rounded-2xl border border-white/60 dark:border-white/10 bg-white/50 dark:bg-white/[0.05]"
+
+function decisionBadgeClass(value?: string): string {
+  const v = (value || "").trim().toLowerCase()
+  if (["yes", "hired", "pass", "passed"].includes(v))
+    return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+  if (["no", "rejected", "fail", "failed"].includes(v))
+    return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+  return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+}
+
+function initialsOf(name: string): string {
+  return name
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("")
+}
+
 export default function DashboardPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
-  const userEmail = user?.email || "guest@example.com"
   const router = useRouter()
+  const { user } = useAuth()
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all")
@@ -229,18 +278,16 @@ export default function DashboardPage() {
 
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
+  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([])
+
   const fetchCampaigns = async () => {
     setLoadingCampaigns(true)
     try {
-      // Use the internal API route which calls AllCampaign via POST through proxy
       const response = await fetch("/api/campaigns")
       if (!response.ok) throw new Error(`API returned ${response.status}`)
 
       const data = await response.json()
-      console.log("[dashboard] Campaigns response:", data)
-
       const list: Campaign[] = data.campaigns || []
-      console.log("[dashboard] Total campaigns:", list.length)
       setCampaigns(list)
     } catch (error: any) {
       console.error("[dashboard] Error fetching campaigns:", error)
@@ -261,23 +308,12 @@ export default function DashboardPage() {
 
       let response: Response
       if (campaignName && campaignName !== "all") {
-        // As requested: send Certian Campaign action when a specific campaign is clicked
-        const url = `/api/campaigns?campaignName=${encodeURIComponent(campaignName)}`
-        console.log(`[dashboard] Fetching metrics from Certain Campaign: ${url}`)
+        const url = `/api/hr-data?campaign=${encodeURIComponent(campaignName)}`
+        console.log(`[dashboard] Fetching candidates from HR Data: ${url}`)
         response = await fetch(url)
       } else {
-        // Default overall view
-        const params = new URLSearchParams()
-        params.append("action", "HRAnalytics")
-        
-        response = await fetch(`/api/webhook-proxy?${params.toString()}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: userEmail,
-            campaign: undefined
-          }),
-        })
+        // Default overall view — all rows from the HR Data table
+        response = await fetch("/api/hr-data")
       }
 
       const responseText = await response.text()
@@ -297,7 +333,7 @@ export default function DashboardPage() {
         }
       }
 
-      console.log("[dashboard] Received raw data:", rawData)
+      console.log("[dashboard] Received rows:", Array.isArray(rawData) ? rawData.length : typeof rawData)
 
       // Normalize rawData to handle various envelope shapes
       let actualData = rawData
@@ -359,6 +395,10 @@ export default function DashboardPage() {
           managerMeetingTime: c["Manager Meeting Time"] || c.ManagerMeetingTime || "",
           managerMeetingLink: c["Manager Interview Link"] || c.ManagerMeetingLink || "",
           managerEventID:     c["Manager Event ID"] || c.ManagerEventID || "",
+
+          campaign: String(c.Role || c.role || c.Campaign || ""),
+          callDate: String(c["Call 1"] || c.call1 || c.time || c.created_at || ""),
+          callTranscript: String(c.Data || ""),
         }))
 
         if (normalizedCandidates.length === 0 && !actualData.overview) {
@@ -427,6 +467,11 @@ export default function DashboardPage() {
           hiringEfficiencyPercent: ((hr.hired / hr.total) * 100).toFixed(1)
         }))
 
+        // Server-provided analytics (if any) — must be locals, never component-scope
+        // bindings declared after the early-return (those cause TDZ errors here).
+        const serverHrPerf = Array.isArray(actualData.hrPerformance) ? actualData.hrPerformance : []
+        const serverCityPerf = Array.isArray(actualData.cityPerformance) ? actualData.cityPerformance : []
+
         const transformedData: HRAnalytics = {
           overview: {
             totalCandidates: totalCands,
@@ -447,8 +492,8 @@ export default function DashboardPage() {
           overall: actualData.overall || actualData.overview || {},
           funnel: actualData.funnel || {},
           qualityIndex: actualData.qualityIndex || {},
-          hrPerformance: hrPerformance.length > 0 ? hrPerformance : calculatedHrPerf,
-          cityPerformance: cityPerformance.length > 0 ? cityPerformance : calculatedCityPerf,
+          hrPerformance: serverHrPerf.length > 0 ? serverHrPerf : calculatedHrPerf,
+          cityPerformance: serverCityPerf.length > 0 ? serverCityPerf : calculatedCityPerf,
           decisionEffectiveness: actualData.decisionEffectiveness || avgScore,
           candidatesByStage: {
             resume_passed: stageResumePassed,
@@ -488,20 +533,29 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    if (user?.accessType !== "admin") return
+    let cancelled = false
+    fetch("/api/users")
+      .then((res) => (res.ok ? res.json() : { users: [] }))
+      .then((data) => {
+        if (!cancelled) setTeamUsers(data.users || [])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  useEffect(() => {
     localStorage.setItem("selectedCampaign", selectedCampaign)
     fetchHRAnalytics(selectedCampaign)
   }, [selectedCampaign])
 
   if (!isMounted || (loading && !hrData) || (loadingCampaigns && campaigns.length === 0)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background transition-colors duration-500">
+      <div className="flex items-center justify-center min-h-[70vh] transition-colors duration-500">
         <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="size-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="size-10 border-4 border-accent/20 border-t-accent rounded-full animate-spin-reverse" />
-            </div>
-          </div>
+          <InfinityLoop className="size-20 text-primary mx-auto" />
           <div className="space-y-2">
             <p className="text-foreground font-bold text-xl tracking-tight">Intelligence Engine Loading</p>
             <p className="text-muted-foreground text-sm font-medium animate-pulse">Synchronizing HR Analytics...</p>
@@ -515,7 +569,7 @@ export default function DashboardPage() {
 
   if (isNewUser) {
     return (
-      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+      <div className="min-h-full p-4 md:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-4 md:p-6 lg:p-8 mb-6">
@@ -529,7 +583,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Welcome Card */}
-          <Card className="bg-card border-border shadow-xl shadow-primary/5">
+          <Card className={capsuleCard}>
             <CardHeader>
               <CardTitle className="text-foreground text-2xl">Start Your Hiring Journey</CardTitle>
               <CardDescription className="text-muted-foreground text-base">
@@ -626,6 +680,56 @@ export default function DashboardPage() {
   const insights = hrData?.insights || []
   const hrPerformance = hrData?.hrPerformance || []
   const cityPerformance = hrData?.cityPerformance || []
+
+  const campaignBreakdown = (() => {
+    const map: Record<string, { name: string; total: number; hired: number; scoreSum: number; active: boolean }> = {}
+    for (const c of hrData?.campaignCandidates || []) {
+      const name = c.campaign?.trim() || "Unassigned"
+      const entry = map[name] || (map[name] = { name, total: 0, hired: 0, scoreSum: 0, active: false })
+      entry.total += 1
+      entry.scoreSum += c.score || 0
+      if (isYes(c.managerDecision)) entry.hired += 1
+    }
+    for (const camp of campaigns) {
+      const entry = map[camp.CampaignName]
+      if (entry) entry.active = camp.IsActive
+    }
+    return Object.values(map)
+      .map((e) => ({ ...e, avgScore: e.total ? Math.round((e.scoreSum / e.total) * 10) / 10 : 0 }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6)
+  })()
+
+  const upcomingInterviews = (() => {
+    const entries: { name: string; stage: string; date: Date; time: string; link?: string; city: string }[] = []
+    for (const c of hrData?.candidatesByStage?.all || []) {
+      const rounds: [string, string | undefined, string | undefined, string | undefined][] = [
+        ["HR Round", c.hrMeetingDate, c.hrMeetingTime, c.hrMeetingLink],
+        ["Tech Round", c.techMeetingDate, c.techMeetingTime, c.techMeetingLink],
+        ["Manager Round", c.managerMeetingDate, c.managerMeetingTime, c.managerMeetingLink],
+      ]
+      for (const [stage, dateStr, time, link] of rounds) {
+        if (!dateStr) continue
+        const parsed = parseFlexibleDate(dateStr)
+        if (!parsed) continue
+        entries.push({ name: c.name, stage, date: parsed, time: time || "", link, city: c.city })
+      }
+    }
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    return entries
+      .filter((e) => e.date >= startOfToday)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 5)
+  })()
+
+  const recentCalls = (() => {
+    const rows = (hrData?.campaignCandidates || []).filter((c) => c.callTranscript || c.callDate)
+    return rows
+      .map((c) => ({ candidate: c, ts: parseFlexibleDate(c.callDate)?.getTime() ?? 0 }))
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 5)
+  })()
 
   const stageDistributionData = [
     { name: "Resume Screening", value: hrData?.overview?.resume_passed || 0, fill: "#8b5cf6" },
@@ -787,25 +891,29 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-500">
+    <div className="min-h-full transition-colors duration-500">
       <div className="grid gap-6 p-6">
         {/* Header Section */}
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm p-4 md:p-6 lg:p-8">
+        <section className={`relative overflow-hidden p-4 md:p-6 lg:p-8 border bg-white/60 dark:bg-white/[0.06] backdrop-blur-2xl backdrop-saturate-150 ${capsuleCard}`}>
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-violet-500/5" />
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 w-full lg:w-auto">
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-                {greeting}
+                {greeting}, {user?.name || "HR Manager"}
               </h1>
               <p className="text-muted-foreground text-base md:text-lg font-medium">This is your HR analytics dashboard</p>
               <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-2">
-                <div className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-secondary border border-border">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.08] backdrop-blur-md">
                   <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-xs md:text-sm text-foreground font-semibold">Live Data</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-secondary border border-border">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.08] backdrop-blur-md">
                   <Building2 className="size-4 text-primary" />
                   <span className="text-xs md:text-sm text-foreground font-semibold">{activeCampaigns} Active Campaigns</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.08] backdrop-blur-md">
+                  <Users className="size-4 text-violet-500" />
+                  <span className="text-xs md:text-sm text-foreground font-semibold">{totalCandidates} Candidates</span>
                 </div>
               </div>
             </div>
@@ -815,22 +923,24 @@ export default function DashboardPage() {
                 onValueChange={setSelectedCampaign}
                 onOpenChange={handleCampaignDropdownOpen}
               >
-                <SelectTrigger className="w-full sm:w-[240px] bg-card border-border text-foreground hover:bg-muted transition-colors">
+                <SelectTrigger className="pebble rounded-full w-full sm:w-[240px] h-11 min-h-[2.75rem] px-5 text-foreground font-semibold [&_svg]:text-emerald-500 focus-visible:ring-0">
                   <SelectValue placeholder={loadingCampaigns ? "Loading..." : "Select Campaign"}>
                     {selectedCampaign === "all"
                       ? "Select campaign for analytics"
                       : campaigns.find((c) => c.CampaignName === selectedCampaign)?.CampaignName || selectedCampaign}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="all">Select campaign for analytics</SelectItem>
+                <SelectContent className="pebble-menu border-transparent p-1.5">
+                  <SelectItem value="all" className="pebble-item py-2.5 pl-4 font-medium">
+                    Select campaign for analytics
+                  </SelectItem>
                   {loadingCampaigns ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="size-4 animate-spin text-slate-400" />
+                      <InfinityLoop className="size-4 text-slate-400" />
                     </div>
                   ) : campaigns.length > 0 ? (
                     campaigns.map((campaign) => (
-                      <SelectItem key={campaign.CampaignName} value={campaign.CampaignName}>
+                      <SelectItem key={campaign.CampaignName} value={campaign.CampaignName} className="pebble-item py-2.5 pl-4 font-medium">
                         <div className="flex items-center justify-between w-full">
                            <span>{campaign.CampaignName}</span>
                            {campaign.IsActive && (
@@ -845,7 +955,8 @@ export default function DashboardPage() {
                 </SelectContent>
               </Select>
               <Link href="/manage-campaigns" className="w-full sm:w-auto">
-                <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                <Button className="pebble-primary w-full h-11 px-6 font-semibold tracking-tight [&_svg]:text-white">
+                  <Plus className="size-4" />
                   Create Campaign
                 </Button>
               </Link>
@@ -854,9 +965,9 @@ export default function DashboardPage() {
         </section>
 
         {/* Key Metrics Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card
-            className="bg-card border-border hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer"
+            className={`${capsuleCard} hover:-translate-y-1 hover:border-emerald-500/50 cursor-pointer`}
             onClick={() => setExpandedCard(expandedCard === "total" ? null : "total")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -872,7 +983,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-emerald-400 font-medium">{overallConversion}</p>
               </div>
               {expandedCard === "total" && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="mt-4 pt-4 border-t border-white/50 dark:border-white/10 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Resume Pass:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.resume_passed || 0}</span>
@@ -893,7 +1004,7 @@ export default function DashboardPage() {
                     <span className="text-muted-foreground">Manager Pass:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.manager_passed || 0}</span>
                   </div>
-                  <div className="flex justify-between text-xs pt-1 border-t border-border mt-1">
+                  <div className="flex justify-between text-xs pt-1 border-t border-white/50 dark:border-white/10 mt-1">
                     <span className="text-muted-foreground font-bold">Total Hired:</span>
                     <span className="text-emerald-500 font-bold">{finalHired}</span>
                   </div>
@@ -903,7 +1014,7 @@ export default function DashboardPage() {
           </Card>
 
           <Card
-            className="bg-card border-border hover:border-violet-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10 cursor-pointer"
+            className={`${capsuleCard} hover:-translate-y-1 hover:border-violet-500/50 cursor-pointer`}
             onClick={() => setExpandedCard(expandedCard === "score" ? null : "score")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -921,7 +1032,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground font-medium">Median: {medianScore}</p>
               </div>
               {expandedCard === "score" && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="mt-4 pt-4 border-t border-white/50 dark:border-white/10 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Std Deviation:</span>
                     <span className="text-foreground font-semibold">{scoreStdDev}</span>
@@ -938,7 +1049,7 @@ export default function DashboardPage() {
           </Card>
 
           <Card
-            className="bg-card border-border hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer"
+            className={`${capsuleCard} hover:-translate-y-1 hover:border-blue-500/50 cursor-pointer`}
             onClick={() => setExpandedCard(expandedCard === "hired" ? null : "hired")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -954,7 +1065,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-blue-500 font-medium">{hrData?.funnel?.tiToHiredPercent || "0%"}</p>
               </div>
               {expandedCard === "hired" && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="mt-4 pt-4 border-t border-white/50 dark:border-white/10 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Resume → Call:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.resume_to_call || "0%"}</span>
@@ -971,7 +1082,7 @@ export default function DashboardPage() {
                     <span className="text-muted-foreground">Tech → Manager:</span>
                     <span className="text-foreground font-semibold">{hrData?.overview?.tech_to_manager || "0%"}</span>
                   </div>
-                  <div className="flex justify-between text-xs pt-1 border-t border-border mt-1">
+                  <div className="flex justify-between text-xs pt-1 border-t border-white/50 dark:border-white/10 mt-1">
                     <span className="text-muted-foreground">Rejection Rate:</span>
                     <span className="text-red-500 font-semibold">{rejected} candidates</span>
                   </div>
@@ -981,7 +1092,7 @@ export default function DashboardPage() {
           </Card>
 
           <Card
-            className="bg-card border-border hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 cursor-pointer"
+            className={`${capsuleCard} hover:-translate-y-1 hover:border-amber-500/50 cursor-pointer`}
             onClick={() => setExpandedCard(expandedCard === "quality" ? null : "quality")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -997,7 +1108,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-amber-500 font-medium">Effectiveness Index</p>
               </div>
               {expandedCard === "quality" && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="mt-4 pt-4 border-t border-white/50 dark:border-white/10 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">All Candidates Avg:</span>
                     <span className="text-foreground font-semibold">{hrData?.qualityIndex?.avgAllScore || "N/A"}</span>
@@ -1012,12 +1123,63 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+
+          <Card className={`${capsuleCard} hover:-translate-y-1 hover:border-rose-500/50`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Rejected</CardTitle>
+              <div className="p-2 rounded-lg bg-rose-500/10">
+                <XCircle className="size-4 text-rose-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-extrabold text-rose-500">{rejected}</div>
+              <div className="flex items-center gap-2 mt-2">
+                <AlertCircle className="size-4 text-rose-400" />
+                <p className="text-xs text-rose-400 font-medium">
+                  {totalCandidates > 0 ? Math.round((rejected / totalCandidates) * 100) : 0}% of all applicants
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`${capsuleCard} hover:-translate-y-1 hover:border-indigo-500/50`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Active Campaigns</CardTitle>
+              <div className="p-2 rounded-lg bg-indigo-500/10">
+                <Layers className="size-4 text-indigo-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-extrabold text-indigo-500">{activeCampaigns}</div>
+              <div className="flex items-center gap-2 mt-2">
+                <Building2 className="size-4 text-indigo-400" />
+                <p className="text-xs text-indigo-400 font-medium">
+                  {campaigns.length > activeCampaigns ? `${campaigns.length - activeCampaigns} paused / archived` : `${campaigns.length} total campaigns`}
+                </p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {campaigns.slice(0, 4).map((c) => (
+                  <span
+                    key={c.CampaignName}
+                    className="text-[10px] font-semibold px-2 py-1 rounded-full border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.08] text-foreground/80 truncate max-w-[120px]"
+                  >
+                    {c.CampaignName}
+                  </span>
+                ))}
+                {campaigns.length > 4 && (
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-full text-muted-foreground">
+                    +{campaigns.length - 4} more
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
 
         {/* Charts Section */}
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="bg-card border-border shadow-sm">
+          <Card className={capsuleCard}>
             <CardHeader>
               <CardTitle className="text-foreground flex items-center gap-2">
                 <Target className="size-5 text-emerald-500" />
@@ -1076,7 +1238,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border shadow-sm">
+          <Card className={capsuleCard}>
             <CardHeader>
               <CardTitle className="text-foreground flex items-center gap-2">
                 <Users className="size-5 text-violet-400" />
@@ -1130,7 +1292,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border shadow-sm">
+          <Card className={capsuleCard}>
             <CardHeader>
               <CardTitle className="text-foreground flex items-center gap-2">
                 <Building2 className="size-5 text-blue-500" />
@@ -1182,9 +1344,241 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Campaign Breakdown + Upcoming Interviews */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className={capsuleCard}>
+            <CardHeader>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Layers className="size-5 text-indigo-500" />
+                Campaign Breakdown
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">Hires and average score per campaign</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {campaignBreakdown.length > 0 ? (
+                campaignBreakdown.map((c) => {
+                  const pct = c.total > 0 ? Math.round((c.hired / c.total) * 100) : 0
+                  return (
+                    <div key={c.name} className="pb-3 last:pb-0">
+                      <div className={`flex items-center justify-between gap-3 px-4 py-3 ${glassRow}`}>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground text-sm truncate">{c.name}</span>
+                            <Badge
+                              variant="outline"
+                              className={`scale-90 ${
+                                c.active
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                  : "bg-white/60 dark:bg-white/10 text-muted-foreground border-white/60 dark:border-white/10"
+                              }`}
+                            >
+                              {c.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {c.total} candidates &middot; avg score {c.avgScore}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-lg font-extrabold text-emerald-500">{c.hired}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase font-bold">hired</div>
+                        </div>
+                      </div>
+                      <div className="mx-4 mt-2 h-1.5 rounded-full bg-white/60 dark:bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                  <Layers className="size-10 mb-3 opacity-50" />
+                  <p className="text-sm">No campaign data yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className={capsuleCard}>
+            <CardHeader>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <CalendarClock className="size-5 text-violet-500" />
+                Upcoming Interviews
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">Next scheduled interview rounds</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {upcomingInterviews.length > 0 ? (
+                upcomingInterviews.map((m, i) => (
+                  <div key={`${m.name}-${m.stage}-${i}`} className={`flex items-center justify-between gap-3 px-4 py-3 ${glassRow}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="size-9 shrink-0 rounded-full bg-gradient-to-br from-violet-500/20 to-emerald-500/20 border border-white/60 dark:border-white/10 flex items-center justify-center text-xs font-bold text-foreground">
+                        {initialsOf(m.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {m.stage}
+                          {m.city ? ` · ${m.city}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-foreground">{format(m.date, "MMM d, yyyy")}</p>
+                        <p className="text-[11px] text-muted-foreground">{m.time || "Time TBD"}</p>
+                      </div>
+                      {m.link ? (
+                        <a
+                          href={m.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-500 hover:bg-violet-500/20 transition-colors"
+                          title="Join meeting"
+                        >
+                          <Video className="size-4" />
+                        </a>
+                      ) : (
+                        <Link
+                          href="/meetings"
+                          className="p-2 rounded-full bg-white/60 dark:bg-white/10 border border-white/60 dark:border-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                          title="Open calendar"
+                        >
+                          <CalendarClock className="size-4" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                  <CalendarClock className="size-10 mb-3 opacity-50" />
+                  <p className="text-sm">No upcoming interviews scheduled</p>
+                  <Link href="/meetings" className="text-xs text-primary font-semibold mt-2 hover:underline">
+                    Open meetings calendar
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Call Activity + Team Activity */}
+        <div className={`grid gap-4 ${user?.accessType === "admin" ? "lg:grid-cols-2" : ""}`}>
+          <Card className={capsuleCard}>
+            <CardHeader>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <PhoneCall className="size-5 text-emerald-500" />
+                Recent Call Activity
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">Latest screening calls and decisions</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentCalls.length > 0 ? (
+                recentCalls.map(({ candidate, ts }) => (
+                  <div key={candidate.id} className={`flex items-center justify-between gap-3 px-4 py-3 ${glassRow}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="size-9 shrink-0 rounded-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border border-white/60 dark:border-white/10 flex items-center justify-center text-xs font-bold text-foreground">
+                        {initialsOf(candidate.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{candidate.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {candidate.campaign?.trim() || "Unassigned"}
+                          {candidate.city ? ` · ${candidate.city}` : ""}
+                        </p>
+                        {candidate.callTranscript ? (
+                          <p className="text-[11px] text-muted-foreground/80 truncate italic">
+                            {candidate.callTranscript.replace(/\s+/g, " ").slice(0, 90)}...
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <Badge variant="outline" className={`text-[10px] ${decisionBadgeClass(candidate.callDecision)}`}>
+                        {candidate.callDecision || "Pending"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        {candidate.callDate
+                          ? parseFlexibleDate(candidate.callDate)
+                            ? format(parseFlexibleDate(candidate.callDate)!, "MMM d, yyyy")
+                            : candidate.callDate
+                          : ts
+                            ? format(new Date(ts), "MMM d, yyyy")
+                            : ""}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                  <PhoneCall className="size-10 mb-3 opacity-50" />
+                  <p className="text-sm">No call data yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {user?.accessType === "admin" && (
+            <Card className={capsuleCard}>
+              <CardHeader>
+                <div className="flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Activity className="size-5 text-blue-500" />
+                    Team Activity
+                  </CardTitle>
+                  <Link href="/users" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
+                    Manage
+                    <ArrowUpRight className="size-3" />
+                  </Link>
+                </div>
+                <CardDescription className="text-muted-foreground">User accounts and last sign-in</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {teamUsers.length > 0 ? (
+                  teamUsers.map((tu) => (
+                    <div key={tu.id} className={`flex items-center justify-between gap-3 px-4 py-3 ${glassRow}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-9 shrink-0 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-white/60 dark:border-white/10 flex items-center justify-center text-xs font-bold text-foreground">
+                          {initialsOf(tu.Name || tu.Email || "?")}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{tu.Name || "Unnamed"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{tu.Email}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] scale-90 ${
+                            (tu.Access_Type || "").toLowerCase() === "admin"
+                              ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                          }`}
+                        >
+                          {tu.Access_Type || "Interviewer"}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{timeAgo(tu.Last_Activity)}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                    <Activity className="size-10 mb-3 opacity-50" />
+                    <p className="text-sm">No team members found</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {/* Candidate List - Only show for campaign-specific view */}
         {selectedCampaign !== "all" && (
-          <Card className="bg-card border-border shadow-sm">
+          <Card className={capsuleCard}>
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -1398,7 +1792,7 @@ export default function DashboardPage() {
 
         {/* AI Insights */}
         {insights.length > 0 && (
-          <Card className="bg-card border-border shadow-sm">
+          <Card className={capsuleCard}>
             <CardHeader>
               <CardTitle className="text-foreground flex items-center gap-2">
                 <AlertCircle className="size-5 text-emerald-500" />

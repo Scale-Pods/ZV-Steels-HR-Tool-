@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState } from "react"
 import {
   Dialog,
@@ -19,7 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner"
 
 interface ReportIssueModalProps {
@@ -139,7 +140,7 @@ export function ReportIssueModal({ open, onOpenChange }: ReportIssueModalProps) 
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
+                <InfinityLoop className="mr-2 size-4" />
                 Sending Report...
               </>
             ) : (

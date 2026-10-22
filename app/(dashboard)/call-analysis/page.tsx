@@ -1,17 +1,13 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  PhoneCall, Search, Loader2, RefreshCcw, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Filter, Download, User, MapPin, Briefcase, 
-  Target, Calendar, DollarSign, MessageSquare, LayoutDashboard,
-  Sparkles, Layers, ListChecks, Check, X, AlertCircle
-} from "lucide-react"
+import { PhoneCall, Search, RefreshCcw, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Filter, Download, User, MapPin, Briefcase, Target, Calendar, DollarSign, MessageSquare, LayoutDashboard, Sparkles, Layers, ListChecks, Check, X, AlertCircle, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -257,6 +253,40 @@ export default function CallAnalysisPage() {
   // Sidebar state
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [bolnaCredits, setBolnaCredits] = useState<number | null>(null)
+  const [creditsLoading, setCreditsLoading] = useState(false)
+
+  const fetchBolnaCredits = useCallback(async () => {
+    setCreditsLoading(true)
+    try {
+      const res = await fetch("https://n8n.srv1010832.hstgr.cloud/webhook/e535ef1a-c5ae-4c36-8a5e-b11e12db78d4", { 
+        cache: "no-store",
+        method: "GET"
+      })
+      if (res.ok) {
+        const text = await res.text()
+        // Try to extract wallet
+        const walletMatch = text.match(/"wallet"\s*:\s*([0-9]+(?:\.[0-9]+)?)/)
+        if (walletMatch) {
+          setBolnaCredits(parseFloat(walletMatch[1]))
+          setCreditsLoading(false)
+          return
+        }
+      }
+      // Fallback to API route
+      const apiRes = await fetch("/api/bolna-credits", { cache: "no-store" })
+      if (apiRes.ok) {
+        const data = await apiRes.json()
+        if (data.success && data.data?.wallet !== undefined) {
+          setBolnaCredits(Number(data.data.wallet))
+        }
+      }
+    } catch (err) {
+      console.error("[CallAnalysis] credits fetch error:", err)
+    } finally {
+      setCreditsLoading(false)
+    }
+  }, [])
 
   // Fetch campaigns
   useEffect(() => {
@@ -264,7 +294,8 @@ export default function CallAnalysisPage() {
       .then(r => r.json())
       .then((data: any) => setCampaigns(data.campaigns || []))
       .catch(err => console.error("[CallAnalysis] campaign fetch error:", err))
-  }, [])
+    fetchBolnaCredits()
+  }, [fetchBolnaCredits])
 
   const fetchData = useCallback(async (campaign: string) => {
     setLoading(true)
@@ -274,19 +305,12 @@ export default function CallAnalysisPage() {
       return
     }
     try {
-      const userEmail = user?.email || "guest@example.com"
       let response: Response
 
       if (campaign !== "all") {
-        response = await fetch(`/api/campaigns?campaignName=${encodeURIComponent(campaign)}`)
+        response = await fetch(`/api/hr-data?campaign=${encodeURIComponent(campaign)}`)
       } else {
-        const params = new URLSearchParams()
-        params.append("action", "HRAnalytics")
-        response = await fetch(`/api/webhook-proxy?${params.toString()}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail }),
-        })
+        response = await fetch("/api/hr-data")
       }
 
       if (!response.ok) throw new Error(`API returned ${response.status}`)
@@ -372,26 +396,38 @@ export default function CallAnalysisPage() {
         let maxMatches = -1
         
         const allEntries = Object.entries(c)
-        for (const [key, val] of allEntries) {
-          if (typeof val !== "string" || val.length < 5) continue
-          
-          const text = val.trim()
-          const matches = text.match(/\d+[\.\)]\s/g)
-          const count = matches ? matches.length : 0
-          
-          let score = count
-          if (count > 0 && /log|call|intel/i.test(key)) score += 0.5
-
-          if (score > maxMatches) {
-            maxMatches = score
-            bestText = text
+        // Prioritize common fields first
+        const priorityKeys = ["Call Logs", "CallLogs", "call_logs", "Data", "data", "CallLog", "callLog", "Transcript", "transcript"]
+        for (const pk of priorityKeys) {
+          const v = c[pk]
+          if (typeof v === "string" && v.trim().length > 5) {
+            const text = v.trim()
+            const matches = text.match(/\d+[\.\)]\s/g)
+            const count = matches ? matches.length : 0
+            if (count >= maxMatches) {
+              maxMatches = count >= 0 ? count : 1
+              bestText = text
+            }
           }
         }
-        
-        // Final fallback: If no pattern was found, try to find the explicit "Call Logs" field
+        if (!bestText || maxMatches < 0) {
+          for (const [key, val] of allEntries) {
+            if (typeof val !== "string" || val.length < 5) continue
+            const text = val.trim()
+            const matches = text.match(/\d+[\.\)]\s/g)
+            const count = matches ? matches.length : 0
+            if (count === 0) continue
+            let score = count
+            if (/log|call|intel|data|transcript/i.test(key)) score += 1
+            if (score > maxMatches) {
+              maxMatches = score
+              bestText = text
+            }
+          }
+        }
         if (!bestText) {
-          bestText = c["Call Logs"] || c.CallLogs || c.call_logs || ""
-          if (bestText) maxMatches = 1 // Force it to parse
+          bestText = c["Call Logs"] || c.CallLogs || c.call_logs || c.Data || c.data || ""
+          if (bestText) maxMatches = (bestText.match(/\d+[\.\)]\s/g)?.length || 0) >= 0 ? (bestText.match(/\d+[\.\)]\s/g)?.length || 1) : 1
         }
         
         let metrics: Record<string, MetricEntry> = {}
@@ -400,6 +436,10 @@ export default function CallAnalysisPage() {
 
         if (maxMatches > 0) {
           metrics = parseCallLogs(bestText)
+          if (Object.keys(metrics).length === 0) {
+            // try to parse anyway
+            metrics = parseCallLogs(bestText)
+          }
           hasCallData = true
           bestRaw = bestText
         } else {
@@ -465,6 +505,10 @@ export default function CallAnalysisPage() {
         )
       })
       .sort((a, b) => {
+        const aHasCallData = (Object.keys(a.metrics).length > 0) || Boolean(a.bestRaw && String(a.bestRaw).trim().length > 0) || Boolean(a.candidate.CallLogs || a.candidate["Call Logs"] || a.candidate.call_logs)
+        const bHasCallData = (Object.keys(b.metrics).length > 0) || Boolean(b.bestRaw && String(b.bestRaw).trim().length > 0) || Boolean(b.candidate.CallLogs || b.candidate["Call Logs"] || b.candidate.call_logs)
+        if (aHasCallData !== bHasCallData) return bHasCallData ? -1 : 1
+
         const aHasData = Object.keys(a.metrics).length > 0 ? 1 : 0
         const bHasData = Object.keys(b.metrics).length > 0 ? 1 : 0
         if (aHasData !== bHasData) return bHasData - aHasData
@@ -557,35 +601,63 @@ export default function CallAnalysisPage() {
         <div className="absolute top-0 right-0 p-8 opacity-10 blur-[100px] bg-primary rounded-full size-80 -mr-40 -mt-40 transition-all duration-700 group-hover:opacity-20 group-hover:scale-110" />
         <div className="absolute bottom-0 left-0 p-8 opacity-5 blur-[80px] bg-cyan-500 rounded-full size-64 -ml-32 -mb-32 transition-all duration-700 group-hover:opacity-10" />
         
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 justify-center md:justify-start">
               <div className="size-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner group/icon">
                 <Sparkles className="size-7 text-primary transition-transform duration-500 group-hover/icon:rotate-12 group-hover/icon:scale-110" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none mb-1">Call Analysis <span className="text-primary italic">Hub</span></h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none mb-1">Call Analysis</h1>
                 <p className="text-muted-foreground/60 text-[11px] font-black uppercase tracking-[0.3em]">AI-Driven Candidate Intelligence</p>
               </div>
             </div>
-            <p className="text-muted-foreground/70 text-sm max-w-xl leading-relaxed">Advanced NLP extraction of key qualification metrics and behavioral signals from automated candidate call logs.</p>
+            <p className="text-muted-foreground/70 text-sm max-w-xl leading-relaxed"></p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <Card className={cn(
+              "border-border/50 bg-card/40 backdrop-blur-xl shadow-sm",
+              bolnaCredits !== null && bolnaCredits < 15 && "border-red-500/50 bg-red-500/5"
+            )}>
+              <CardContent className="flex items-center gap-3 px-6 py-3">
+                <div className={cn(
+                  "size-10 rounded-xl flex items-center justify-center",
+                  bolnaCredits !== null && bolnaCredits < 15 ? "bg-red-500/10" : "bg-emerald-500/10"
+                )}>
+                  <Wallet className={cn(
+                    "size-5",
+                    bolnaCredits !== null && bolnaCredits < 15 ? "text-red-500" : "text-emerald-500"
+                  )} />
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">Bolna Credit</p>
+                  <p className={cn(
+                    "text-lg font-black",
+                    bolnaCredits !== null && bolnaCredits < 15 ? "text-red-500" : "text-foreground"
+                  )}>
+                    {creditsLoading ? "..." : bolnaCredits !== null ? `${bolnaCredits.toFixed(2)} INR` : "N/A"}
+                  </p>
+                </div>
+                {bolnaCredits !== null && bolnaCredits < 15 && (
+                  <AlertCircle className="size-4 text-red-500" />
+                )}
+              </CardContent>
+            </Card>
             <Button 
               variant="outline" 
-              onClick={() => fetchData(selectedCampaign)} 
-              disabled={loading} 
+              onClick={() => { fetchData(selectedCampaign); fetchBolnaCredits(); }} 
+              disabled={loading || creditsLoading} 
               className="rounded-2xl border-white/10 text-foreground h-14 px-4 md:px-8 bg-zinc-900/50 backdrop-blur-2xl hover:bg-zinc-900/80 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl active:scale-[0.98]"
             >
-              <RefreshCcw className={cn("size-4 mr-3", loading && "animate-spin")} /> 
-              {loading ? "Synchronizing..." : "Refresh Intelligence"}
+              <RefreshCcw className={cn("size-4 mr-3", (loading || creditsLoading) && "animate-spin")} /> 
+              {loading ? "Synchronizing..." : "Refresh"}
             </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: "Analysed Profiles", value: stats.total, icon: Users, color: "text-blue-500", bg: "bg-blue-500/5" },
+            { label: "Profiles", value: stats.total, icon: Users, color: "text-blue-500", bg: "bg-blue-500/5" },
             { label: "Active Filter", value: filtered.length, icon: ListChecks, color: "text-primary", bg: "bg-primary/5" },
             { label: "Conversion Rate", value: stats.total > 0 ? `${((stats.passed / stats.total) * 100).toFixed(0)}%` : "0%", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/5" },
             { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-red-500", bg: "bg-red-500/5" },
@@ -665,7 +737,7 @@ export default function CallAnalysisPage() {
               {loading ? (
                 <tr>
                   <td colSpan={dynamicMetricKeys.length + 3} className="py-32 text-center">
-                    <Loader2 className="size-10 animate-spin mx-auto text-primary mb-4 opacity-50" />
+                    <InfinityLoop className="size-10 mx-auto text-primary mb-4 opacity-50" />
                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Processing Transcripts...</p>
                   </td>
                 </tr>
@@ -723,10 +795,12 @@ export default function CallAnalysisPage() {
                           const rawText = c.CallLogs || c["Call Logs"] || ""
                           return (
                             <td key={ci} className="px-3 py-2 border-r border-border min-w-[250px] max-w-[400px]">
-                              <p className="text-foreground/80 text-[10px] leading-tight line-clamp-3 font-mono italic" title={String(rawText)}>
-                                {String(rawText).substring(0, 500)}
-                                {String(rawText).length > 500 ? "..." : ""}
-                              </p>
+                <div className="text-foreground/80 text-[9px] leading-tight space-y-1 max-h-[80px] overflow-auto" title={String(rawText)}>
+                  {String(rawText).split(/\n|\r|\r\n/).slice(0, 6).map((line, idx) => (
+                    <div key={idx} className="truncate">{line}</div>
+                  ))}
+                  {String(rawText).split(/\n|\r|\r\n/).length > 6 && <div className="text-muted-foreground">...</div>}
+                </div>
                             </td>
                           )
                         }

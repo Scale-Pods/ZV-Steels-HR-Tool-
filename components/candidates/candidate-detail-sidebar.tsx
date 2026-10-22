@@ -114,6 +114,12 @@ export function CandidateDetailSidebar({
   const [showRawData, setShowRawData] = useState(false)
   const decisionRef = useRef<CandidateDecisionSidebarRef>(null)
 
+  // Per-candidate optimized: "Optimized_candidates" = yes → resume screening skipped,
+  // pipeline starts from the Call round and all rounds are shown
+  const candidateIsOptimized =
+    isOptimized ||
+    String(candidate?.["Optimized_candidates"] ?? "").trim().toLowerCase() === "yes"
+
 
   const driveFileId = useMemo(() => {
     if (!candidate?.ResumeLink) return null
@@ -137,7 +143,7 @@ export function CandidateDetailSidebar({
   const normalizeDecision = (val: any): string => {
     if (!val) return ""
     const v = String(val).toLowerCase()
-    if (v === "yes" || v === "pass" || v === "passed" || v === "approved" || v === "hired") return "Yes"
+    if (v === "yes" || v === "pass" || v === "passed" || v === "approved" || v === "hired" || v === "shortlist" || v === "shortlisted") return "Yes"
     if (v === "no" || v === "fail" || v === "failed" || v === "rejected") return "No"
     return String(val)
   }
@@ -986,7 +992,7 @@ export function CandidateDetailSidebar({
                         onSuccess={handleDecisionSuccess}
                         numberOfRounds={numberOfRounds}
                         hideSubmit={true}
-                        isOptimized={isOptimized}
+                        isOptimized={candidateIsOptimized}
                       />
                     ) : (
                       <Card className="bg-muted/30 border-border">

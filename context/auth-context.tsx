@@ -1,48 +1,84 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { 
-  onAuthStateChanged, 
-  User,
-  signOut as firebaseSignOut
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+
+export interface AuthUser {
+  name: string;
+  email: string;
+  accessType: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
+  refresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  refresh: async () => {},
   logout: async () => {},
 });
 
+const ACTIVITY_INTERVAL_MS = 5 * 60 * 1000;
+
+async function fetchCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    fetch("/api/auth/activity", { method: "POST" }).catch(() => {});
+    return data.user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    let cancelled = false;
 
-    return () => unsubscribe();
+    (async () => {
+      const current = await fetchCurrentUser();
+      if (cancelled) return;
+      setUser(current);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const refresh = useCallback(async () => {
+    const current = await fetchCurrentUser();
+    setUser(current);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(() => {
+      fetch("/api/auth/activity", { method: "POST" }).catch(() => {});
+    }, ACTIVITY_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [user]);
 
   const logout = async () => {
     try {
-      await firebaseSignOut(auth);
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch (error) {
       console.error("Error signing out:", error);
     }
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

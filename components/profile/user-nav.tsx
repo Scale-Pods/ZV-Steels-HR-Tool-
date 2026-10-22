@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { LogOut, Users } from "lucide-react"
 
 import { useState, useEffect } from "react"
@@ -27,8 +27,8 @@ export function UserNav() {
 
   if (!mounted || !user) return <div className="size-10 rounded-full bg-muted/20" />
 
-  const initials = user.displayName
-    ? user.displayName.split(" ").map((n) => n[0]).join("").toUpperCase()
+  const initials = user.name
+    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase()
     : user.email?.charAt(0).toUpperCase() || "U"
 
   return (
@@ -36,21 +36,23 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden border border-border/50 hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all duration-300">
           <Avatar className="h-10 w-10 ring-2 ring-transparent hover:ring-primary/20 transition-all">
-            <AvatarImage src={user.photoURL || ""} alt={user.displayName || ""} />
             <AvatarFallback className="bg-primary/10 text-primary font-bold">
               {initials}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end">
+      <DropdownMenuContent className="w-56" align="start">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-bold leading-none tracking-tight">
-              {user.displayName || "User"}
+              {user.name || "User"}
             </p>
             <p className="text-xs leading-none text-muted-foreground truncate">
               {user.email}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground capitalize">
+              {user.accessType}
             </p>
           </div>
         </DropdownMenuLabel>

@@ -1,11 +1,12 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Users, ArrowRight, Loader2, Edit, Play, Pause } from "lucide-react"
+import { Calendar, MapPin, Users, ArrowRight, Edit, Play, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast"
 import { EditCampaignModal } from "@/components/campaigns/edit-campaign-modal"
 
@@ -82,7 +83,7 @@ export default function ExhibitionsPage() {
       {loadingCampaigns ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="size-8 animate-spin text-muted-foreground mx-auto" />
+            <InfinityLoop className="size-8 text-muted-foreground mx-auto" />
             <p className="text-sm text-muted-foreground">Loading campaigns...</p>
           </div>
         </div>

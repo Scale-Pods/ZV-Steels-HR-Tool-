@@ -1,5 +1,6 @@
 "use client"
 
+import { InfinityLoop } from "@/components/ui/infinity";
 import { useState, useEffect } from "react"
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
   TableRow 
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, UserPlus, Mail, Link as LinkIcon, ExternalLink } from "lucide-react"
+import { UserPlus, Mail, Link as LinkIcon, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast"
 import { AddInterviewerModal } from "./add-interviewer-modal"
 import { cn } from "@/lib/utils"
@@ -44,11 +45,7 @@ export function InterviewersListModal({ open, onOpenChange }: InterviewersListMo
   const fetchInterviewers = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/webhook-proxy?action=InterviewerListing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "InterviewerListing" })
-      })
+      const response = await fetch("/api/hr-data?view=interviewers")
 
       if (!response.ok) throw new Error("Failed to fetch interviewers")
 
@@ -127,12 +124,7 @@ export function InterviewersListModal({ open, onOpenChange }: InterviewersListMo
             <div className="flex-1 overflow-hidden rounded-xl border border-border/50 bg-card/50 shadow-inner flex flex-col">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                  <div className="relative">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <div className="size-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin-reverse" />
-                    </div>
-                  </div>
+                  <InfinityLoop className="h-12 w-12 text-primary" />
                   <p className="font-semibold text-muted-foreground animate-pulse">Syncing team data...</p>
                 </div>
               ) : interviewers.length === 0 ? (
@@ -206,7 +198,7 @@ export function InterviewersListModal({ open, onOpenChange }: InterviewersListMo
           </div>
           <div className="pt-6 border-t border-border mt-auto flex justify-end gap-3">
             <Button variant="ghost" onClick={fetchInterviewers} disabled={loading} className="font-bold">
-               {loading ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+               {loading ? <InfinityLoop className="size-4 mr-2" /> : null}
                Refresh List
             </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold">Close Portal</Button>
