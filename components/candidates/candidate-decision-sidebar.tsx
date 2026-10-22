@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  INTERVIEW_TYPE_LABEL,
+  INTERVIEW_TYPE_ROUND,
+  INTERVIEW_TYPE_ROUND_LABEL,
+  getInterviewerAssignments,
+  resolveInterviewerEmail,
+  type InterviewType,
+} from "@/lib/interviewer"
 
 interface CandidateDecisionData {
   CampaignName: string
@@ -226,15 +234,12 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     isSubmitting: false,
   })
 
-  const openReschedule = (meetingType: "hr" | "tech" | "manager", interviewerEmail: string, eventId: string) => {
+  const openReschedule = (meetingType: "hr" | "tech" | "manager", eventId: string) => {
     const today = new Date().toISOString().split("T")[0]
-    let resolvedEmail = interviewerEmail || ""
-    // Fallbacks from candidateDetails
-    if (!resolvedEmail && candidateDetails) {
-      if (meetingType === "hr") resolvedEmail = (candidateDetails as any)["HR Assigned"] || (candidateDetails as any)["HR"] || ""
-      else if (meetingType === "tech") resolvedEmail = (candidateDetails as any)["Tech Interviewer"] || (candidateDetails as any)["TIAssigned"] || ""
-      else if (meetingType === "manager") resolvedEmail = (candidateDetails as any)["Manager Assigned"] || (candidateDetails as any)["HR Assigned"] || ""
-    }
+    const resolvedEmail = resolveInterviewerEmail(
+      candidateDetails as unknown as Record<string, any>,
+      meetingType,
+    )
     console.log("[Reschedule Sidebar] Opening with:", { meetingType, interviewerEmail: resolvedEmail, eventId })
     setRescheduleDialog({
       isOpen: true,
@@ -247,6 +252,23 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     })
   }
 
+  const fetchInterviewerEmail = async (
+    candidateEmail: string,
+    type: InterviewType,
+  ): Promise<string> => {
+    if (!candidateEmail) return ""
+    try {
+      const res = await fetch(
+        `/api/interviewer?email=${encodeURIComponent(candidateEmail)}&type=${type}`,
+      )
+      if (!res.ok) return ""
+      const data = await res.json()
+      return data?.interviewerEmail || ""
+    } catch {
+      return ""
+    }
+  }
+
   const submitReschedule = async () => {
     const { meetingType, interviewerEmail, eventId, date, time } = rescheduleDialog
     if (!meetingType || !date || !time) return
@@ -254,14 +276,29 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
     try {
       const WEBHOOK_BASE = process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"
       const RESCHEDULE_ID = process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"
-      let resolvedEmail = interviewerEmail || ""
-      if (!resolvedEmail && candidateDetails) {
-        if (meetingType === "hr") resolvedEmail = (candidateDetails as any)["HR Assigned"] || (candidateDetails as any)["HR"] || ""
-        else if (meetingType === "tech") resolvedEmail = (candidateDetails as any)["Tech Interviewer"] || (candidateDetails as any)["TIAssigned"] || ""
-        else if (meetingType === "manager") resolvedEmail = (candidateDetails as any)["Manager Assigned"] || (candidateDetails as any)["HR Assigned"] || ""
+      const assignments = getInterviewerAssignments(
+        candidateDetails as unknown as Record<string, any>,
+      )
+      let resolvedEmail = assignments[meetingType] || interviewerEmail || ""
+
+      if (!resolvedEmail) {
+        resolvedEmail = await fetchInterviewerEmail(candidateEmail, meetingType)
+        if (resolvedEmail) {
+          assignments[meetingType] = resolvedEmail
+        }
       }
+
+      if (!resolvedEmail) {
+        throw new Error(
+          `No ${INTERVIEW_TYPE_LABEL[meetingType]} interviewer is assigned to this candidate. Assign an interviewer before rescheduling.`,
+        )
+      }
+
+      setRescheduleDialog(prev => ({ ...prev, interviewerEmail: resolvedEmail }))
+
       const params = new URLSearchParams({
         meetingType,
+        interviewType: meetingType,
         interviewerEmail: resolvedEmail,
         eventId,
         candidateEmail,
@@ -280,10 +317,36 @@ export const CandidateDecisionSidebarContent = forwardRef<CandidateDecisionSideb
           campaignName,
           candidateEmail,
           meetingType,
+          interviewType: meetingType,
           newDate: date,
           newTime: time,
           eventId,
-          interviewerEmail,
+          interviewerEmail: resolvedEmail,
+          hrAssigned: assignments.hr,
+          techInterviewer: assignments.tech,
+          managerAssigned: assignments.manager,
+          "HR Assigned": assignments.hr,
+          "Tech Interviewer": assignments.tech,
+          "Manager Assigned": assignments.manager,
+          meetingDetails: {
+            type: INTERVIEW_TYPE_ROUND_LABEL[meetingType],
+            meetingType,
+            interviewType: meetingType,
+            round: INTERVIEW_TYPE_ROUND[meetingType],
+            newDate: date,
+            newTime: time,
+            eventId,
+          },
+          candidateDetails: {
+            ...(candidateDetails as unknown as Record<string, any>),
+            "HR Assigned": assignments.hr,
+            "Tech Interviewer": assignments.tech,
+            "Manager Assigned": assignments.manager,
+            HR: assignments.hr,
+            TIAssigned: assignments.tech,
+            ManagerAssigned: assignments.manager,
+            interviewerEmail: resolvedEmail,
+          },
         }),
       })
       clearTimeout(timeoutId)
@@ -1418,7 +1481,6 @@ function StructuredValue({
                                 className="flex-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10 text-xs font-bold gap-2"
                                 onClick={() => openReschedule(
                                   "hr",
-                                  candidateDetails.HR || "",
                                   candidateDetails.HREventID || ""
                                 )}
                               >
@@ -1503,7 +1565,6 @@ function StructuredValue({
                                 className="flex-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-bold gap-2"
                                 onClick={() => openReschedule(
                                   "tech",
-                                  candidateDetails.TIAssigned || "",
                                   candidateDetails.TechEventID || ""
                                 )}
                               >
@@ -1588,7 +1649,6 @@ function StructuredValue({
                                 className="flex-1 border-violet-500/40 text-violet-400 hover:bg-violet-500/10 text-xs font-bold gap-2"
                                 onClick={() => openReschedule(
                                   "manager",
-                                  candidateDetails.ManagerAssigned || candidateDetails.HR || "",
                                   candidateDetails.ManagerEventID || ""
                                 )}
                               >
@@ -1727,12 +1787,13 @@ function StructuredValue({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {rescheduleDialog.interviewerEmail && (
-              <div className="p-3 rounded-lg bg-muted border border-border text-xs">
-                <p className="text-muted-foreground mb-1">Interviewer</p>
-                <p className="text-foreground font-medium">{rescheduleDialog.interviewerEmail}</p>
-              </div>
-            )}
+            <div className="p-3 rounded-lg bg-muted border border-border text-xs">
+              <p className="text-muted-foreground mb-1">Interviewer to be notified</p>
+              <p className="text-foreground font-medium">
+                {rescheduleDialog.interviewerEmail ||
+                  `No ${rescheduleDialog.meetingType ? INTERVIEW_TYPE_LABEL[rescheduleDialog.meetingType] : ""} interviewer assigned`}
+              </p>
+            </div>
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs">New Date</Label>
               <Input

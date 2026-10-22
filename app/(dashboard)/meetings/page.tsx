@@ -14,10 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  INTERVIEW_TYPE_LABEL,
+  INTERVIEW_TYPE_ROUND,
+  getInterviewerAssignments,
+  type InterviewType,
+} from "@/lib/interviewer"
 
 interface Meeting {
   candidate: Candidate
   type: string
+  interviewType: InterviewType
   date: string
   time?: string
   link?: string
@@ -90,12 +97,46 @@ export default function MeetingsPage() {
     setRescheduleData({ mtg, date: defaultDate, time: mtg.time || "", isOpen: true })
   }
 
+  const fetchInterviewerEmail = async (
+    candidateEmail: string,
+    type: InterviewType,
+  ): Promise<string> => {
+    if (!candidateEmail) return ""
+    try {
+      const res = await fetch(
+        `/api/interviewer?email=${encodeURIComponent(candidateEmail)}&type=${type}`,
+      )
+      if (!res.ok) return ""
+      const data = await res.json()
+      return data?.interviewerEmail || ""
+    } catch {
+      return ""
+    }
+  }
+
   const submitReschedule = async () => {
     const { mtg, date, time } = rescheduleData
     if (!mtg) return
 
+    const interviewType = mtg.interviewType
     setIsRescheduling(`${mtg.candidate.id}-${mtg.type}`)
     try {
+      const assignments = getInterviewerAssignments(mtg.candidate as unknown as Record<string, any>)
+      let interviewerEmail = assignments[interviewType] || ""
+
+      if (!interviewerEmail) {
+        interviewerEmail = await fetchInterviewerEmail(mtg.candidate.email, interviewType)
+        if (interviewerEmail) {
+          assignments[interviewType] = interviewerEmail
+        }
+      }
+
+      if (!interviewerEmail) {
+        throw new Error(
+          `No ${INTERVIEW_TYPE_LABEL[interviewType]} interviewer is assigned to ${mtg.candidate.name}. Assign an interviewer before rescheduling.`,
+        )
+      }
+
       // Pick only relevant fields for candidateDetails
       const baseCandidate: any = {
         id: mtg.candidate.id,
@@ -106,28 +147,47 @@ export default function MeetingsPage() {
         score: mtg.candidate.score,
       }
 
-      const type = mtg.type.toLowerCase()
-      if (type.includes("hr")) {
+      if (interviewType === "hr") {
         baseCandidate.hrMeetingDate = mtg.candidate.hrMeetingDate
         baseCandidate.hrMeetingTime = mtg.candidate.hrMeetingTime
         baseCandidate.hrMeetingLink = mtg.candidate.hrMeetingLink
         baseCandidate.hrEventID = mtg.candidate.hrEventID
-      } else if (type.includes("tech")) {
+      } else if (interviewType === "tech") {
         baseCandidate.techMeetingDate = mtg.candidate.techMeetingDate
         baseCandidate.techMeetingTime = mtg.candidate.techMeetingTime
         baseCandidate.techMeetingLink = mtg.candidate.techMeetingLink
         baseCandidate.techEventID = mtg.candidate.techEventID
-      } else if (type.includes("manager")) {
+      } else if (interviewType === "manager") {
         baseCandidate.managerMeetingDate = mtg.candidate.managerMeetingDate
         baseCandidate.managerMeetingTime = mtg.candidate.managerMeetingTime
         baseCandidate.managerMeetingLink = mtg.candidate.managerMeetingLink
         baseCandidate.managerEventID = mtg.candidate.managerEventID
       }
 
+      baseCandidate["HR Assigned"] = assignments.hr
+      baseCandidate["Tech Interviewer"] = assignments.tech
+      baseCandidate["Manager Assigned"] = assignments.manager
+      baseCandidate.HR = assignments.hr
+      baseCandidate.TIAssigned = assignments.tech
+      baseCandidate.ManagerAssigned = assignments.manager
+      baseCandidate.interviewerEmail = interviewerEmail
+
       const payload = {
         action: "Reschedule",
+        meetingType: interviewType,
+        interviewType,
+        interviewerEmail,
+        hrAssigned: assignments.hr,
+        techInterviewer: assignments.tech,
+        managerAssigned: assignments.manager,
+        "HR Assigned": assignments.hr,
+        "Tech Interviewer": assignments.tech,
+        "Manager Assigned": assignments.manager,
         meetingDetails: {
           type: mtg.type,
+          meetingType: interviewType,
+          interviewType,
+          round: INTERVIEW_TYPE_ROUND[interviewType],
           oldDate: mtg.date,
           oldTime: mtg.time,
           newDate: date,
@@ -139,30 +199,12 @@ export default function MeetingsPage() {
       }
 
       const WEBHOOK_BASE = `${process.env.NEXT_PUBLIC_WEBHOOK_URL || "https://n8n.srv1010832.hstgr.cloud/webhook"}/${process.env.NEXT_PUBLIC_WEBHOOK_RESCHEDULE || "fb2e3033-4cb9-4ad5-a4a2-6c96874349b4"}`
-      let queryType = "other"
-      if (type.includes("hr")) queryType = "hr"
-      else if (type.includes("tech")) queryType = "tech"
-      else if (type.includes("manager")) queryType = "manager"
-
-      let interviewerEmail = ""
-      if (type.includes("hr")) {
-        interviewerEmail = mtg.candidate.hr || (mtg.candidate as any)["HR Assigned"] || (mtg.candidate as any)["HR"] || ""
-      } else if (type.includes("tech")) {
-        interviewerEmail = mtg.candidate.tiAssigned || (mtg.candidate as any)["Tech Interviewer"] || (mtg.candidate as any)["TIAssigned"] || ""
-      } else if (type.includes("manager")) {
-        interviewerEmail = mtg.candidate.managerAssigned || (mtg.candidate as any)["Manager Assigned"] || mtg.candidate.hr || (mtg.candidate as any)["HR Assigned"] || ""
-      }
-
-      // Fallback: try to get from base candidate if still empty
-      if (!interviewerEmail && (mtg.candidate as any).email) {
-        // try to pull from any possible field
-        const c: any = mtg.candidate
-        interviewerEmail = c.hr || c.tiAssigned || c.managerAssigned || c["HR Assigned"] || c["Tech Interviewer"] || c["Manager Assigned"] || ""
-      }
+      const queryType = interviewType
 
       const userRole = mtg.candidate.role || "Admin"
       const params = new URLSearchParams({
         meetingType: queryType,
+        interviewType: queryType,
         interviewerEmail: interviewerEmail,
         eventId: mtg.eventId || "",
         candidateEmail: mtg.candidate.email,
@@ -416,6 +458,7 @@ export default function MeetingsPage() {
         meetings.push({ 
           candidate: c, 
           type: "Round 1", 
+          interviewType: "hr",
           date: c.hrMeetingDate, 
           time: c.hrMeetingTime, 
           link: c.hrMeetingLink, 
@@ -428,6 +471,7 @@ export default function MeetingsPage() {
         meetings.push({ 
           candidate: c, 
           type: "Round 2", 
+          interviewType: "tech",
           date: c.techMeetingDate, 
           time: c.techMeetingTime, 
           link: c.techMeetingLink, 
@@ -440,6 +484,7 @@ export default function MeetingsPage() {
         meetings.push({ 
           candidate: c, 
           type: "Round 3", 
+          interviewType: "manager",
           date: c.managerMeetingDate, 
           time: c.managerMeetingTime, 
           link: c.managerMeetingLink, 
@@ -474,7 +519,7 @@ export default function MeetingsPage() {
 
   const selectedDayMeetings = selectedDate ? getMeetingsForDate(selectedDate) : []
   const todayMeetings = getMeetingsForDate(new Date()).filter((m: Meeting) => 
-    meetingFilter === "all" || m.type.toLowerCase().includes(meetingFilter.toLowerCase())
+    meetingFilter === "all" || m.interviewType === meetingFilter
   )
 
   const hasMeetingOnDate = (date: Date) => {
@@ -483,6 +528,12 @@ export default function MeetingsPage() {
       return meetingDate && isSameDay(meetingDate, date)
     })
   }
+
+  const rescheduleInterviewer = rescheduleData.mtg
+    ? getInterviewerAssignments(rescheduleData.mtg.candidate as unknown as Record<string, any>)[
+        rescheduleData.mtg.interviewType
+      ] || ""
+    : ""
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -804,9 +855,20 @@ export default function MeetingsPage() {
           <DialogHeader>
             <DialogTitle>Reschedule Meeting</DialogTitle>
             <DialogDescription>
-              Select a new date and time for {rescheduleData.mtg?.candidate.name}'s {rescheduleData.mtg?.type}.
+              Select a new date and time for {rescheduleData.mtg?.candidate.name}'s {rescheduleData.mtg?.type}
+              {rescheduleData.mtg ? ` (${INTERVIEW_TYPE_LABEL[rescheduleData.mtg.interviewType]} Round)` : ""}.
             </DialogDescription>
           </DialogHeader>
+          {rescheduleData.mtg && (
+            <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2 space-y-0.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                Interviewer to be notified
+              </p>
+              <p className="text-xs font-bold text-foreground">
+                {rescheduleInterviewer || `No ${INTERVIEW_TYPE_LABEL[rescheduleData.mtg.interviewType]} interviewer assigned`}
+              </p>
+            </div>
+          )}
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="reschedule-date">New Date</Label>
